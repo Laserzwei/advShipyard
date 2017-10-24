@@ -565,7 +565,7 @@ function Shipyard.onBuild5ButtonPress()
             number = number + 1
             n = orgname .." ".. number
 		end
-        if number > 10 then -- Lets be honest, nobody needs 100 ships with the same name
+        if number > 100 then -- Lets be honest, nobody needs 100 ships with the same name
             displayChatMessage("You already have over 100 ships called '${x}'"%_t % {x = orgname}, "Shipyard"%_t, 1)
             break
         end
