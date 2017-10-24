@@ -47,6 +47,7 @@ local material
 local preview
 
 local runningJobs = {}
+local maxParallelJobs = 2   --If you change this make sure it's the same on the server as well as on the client
 
 
 function Shipyard.initialize()
@@ -91,7 +92,7 @@ function Shipyard.initUI()
     window.showCloseButton = 1
     window.moveable = 1
     menu:registerWindow(window, "Build Ship"%_t);
-    
+
 
     local container = window:createContainer(Rect(vec2(0, 0), size));
 
@@ -181,36 +182,43 @@ function Shipyard.initUI()
     statsCheckBox = container:createCheckBox(Rect(), "Show Stats"%_t, "onStatsChecked")
     lister:placeElementCenter(statsCheckBox)
     statsCheckBox.checked = false
-    
+
     --custom designs
     selectShipDesignButton = container:createButton(Rect(), "Select Design"%_t, "onDesignButtonPress");
     lister:placeElementCenter(selectShipDesignButton)
-    
-    
+
+
     -- button at the bottom
     local button = container:createButton(Rect(), "Build"%_t, "onBuildButtonPress");
     local organizer = UIOrganizer(left)
     organizer.padding = 10
     organizer.margin = 10
+    organizer.marginBottom = 50
     organizer:placeElementBottom(button)
+
+	local button5 = container:createButton(Rect(), "Build"%_t .. " (5)", "onBuild5ButtonPress");
+    local organizer5 = UIOrganizer(left)
+    organizer5.padding = 10
+    organizer5.margin = 10
+    organizer5:placeElementBottom(button5)
 
     -- create the viewer
     planDisplayer = container:createPlanDisplayer(vsplit.right);
     planDisplayer.showStats = 0
 
-    -- request the styles
+    -- request the styles, and synch the data; Koonshi write useful comments!
     invokeServerFunction("sendCraftStyles");
-    
+
     shipSelectionWindow = menu:createWindow(Rect(res * 0.5 - size * 0.5, res * 0.5 + size * 0.5))
 
     shipSelectionWindow.caption = "Select your Design"%_t
     shipSelectionWindow.showCloseButton = 1
     shipSelectionWindow.moveable = 1
     shipSelectionWindow.visible = 0
-    
+
     selectDesignButton = shipSelectionWindow:createButton(Rect(vec2(10, shipSelectionWindow.size.y-50), vec2(90, shipSelectionWindow.size.y-10)), "Select", "onPlanSelectedPressed")
     cancelButton = shipSelectionWindow:createButton(Rect(vec2(110, shipSelectionWindow.size.y-50), vec2(190, shipSelectionWindow.size.y-10)), "Unselect", "onDesignCancelPressed")
-    
+
     selection = shipSelectionWindow:createSelection(Rect(vec2(10, 10), vec2(shipSelectionWindow.size.x/2, shipSelectionWindow.size.y - 100)), 5)
     selection.tooltip = "Ein Teststring"
     selection.dropIntoEnabled = false
@@ -218,9 +226,9 @@ function Shipyard.initUI()
     selection.entriesSelectable = true
     selection.onSelectedFunction = "onDesignSelected"
     selection.padding = 4
-    
+
     selectionPlandisplayer = shipSelectionWindow:createPlanDisplayer(Rect(vec2(shipSelectionWindow.size.x/2, 0), vec2(shipSelectionWindow.size.x, shipSelectionWindow.size.y - 100)))
-    
+
 end
 
 -- this function gets called every time the window is shown on the client, ie. when a player presses F
@@ -247,23 +255,26 @@ function Shipyard.renderUIIndicator(px, py, size)
     local y = py + size / 2;
 
     for i, job in pairs(runningJobs) do
+        if i <= maxParallelJobs then
+            -- outer rect
+            local dx = x
+            local dy = y + i * 5
 
-        -- outer rect
-        local dx = x
-        local dy = y + i * 5
+            local sx = size + 2
+            local sy = 4
 
-        local sx = size + 2
-        local sy = 4
+            drawRect(Rect(dx, dy, sx + dx, sy + dy), ColorRGB(0, 0, 0));
 
-        drawRect(Rect(dx, dy, sx + dx, sy + dy), ColorRGB(0, 0, 0));
+            -- inner rect
+            sx = sx - 2
+            sy = sy - 2
 
-        -- inner rect
-        sx = sx - 2
-        sy = sy - 2
+            sx = sx * job.executed / job.duration
 
-        sx = sx * job.executed / job.duration
-
-        drawRect(Rect(dx + 1, dy + 1, sx + dx + 1, sy + dy + 1), ColorRGB(0.66, 0.66, 1.0));
+            drawRect(Rect(dx + 1, dy + 1, sx + dx + 1, sy + dy + 1), ColorRGB(0.66, 0.66, 1.0));
+        else
+            break
+        end
     end
 
 end
@@ -295,7 +306,7 @@ function Shipyard.renderUI()
         table.insert(planResourcesFee, v * fee)
         table.insert(planResourcesTotal, v + v * fee)
     end
-    
+
     if not shipSelectionWindow.visible then
         local offset = 10
         offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Ship Costs"%_t, planMoney, planResources)
@@ -345,7 +356,7 @@ function Shipyard.updatePlan()
     if selection.selected and selection.selected.plan then
         preview = selection.selected.plan
     end
-    
+
     preview:scale(vec3(scale, scale, scale))
 
     -- set to display
@@ -419,11 +430,12 @@ function Shipyard.receiveStyles(styles_received)
 
 end
 
-function Shipyard.startClientJob(executed, duration)
+function Shipyard.addClientJob(executed, duration, name)
     local job = {}
     job.executed = executed
     job.duration = duration
-
+    job.name = name
+    print(name)
     table.insert(runningJobs, job)
 end
 
@@ -469,12 +481,12 @@ function Shipyard.onDesignButtonPress()
     shipSelectionWindow.visible = 1
     local playerships = {getSavedShips()}
     local workshopShips = {getWorkshopShips()}
-    
+
     for _, ship in ipairs(playerships) do
         local item = PlanSelectionItem(ship)
         selection:add(item)
     end
-    
+
     for _, ship in ipairs(workshopShips) do
         local item = PlanSelectionItem(ship)
         selection:add(item)
@@ -487,7 +499,7 @@ function Shipyard.onDesignSelected()
         displayChatMessage("You have no plan selected."%_t, "Fighter Factory"%_t, 1)
         return
     end
-    
+
     local plan = planItem.plan
     if not plan then return end
     selectionPlandisplayer.plan = plan
@@ -525,7 +537,7 @@ function Shipyard.onBuildButtonPress()
     local insurance = insuranceCheckBox.checked
     local captain = captainCheckBox.checked
     local seed = seedTextBox.text
-    
+
     if selection.selected and selection.selected.plan then
         invokeServerFunction("startServerJob", nil, founder, insurance, captain, nil, nil, nil, scale, nil, name, selection.selected.plan)
     else
@@ -534,6 +546,56 @@ function Shipyard.onBuildButtonPress()
 
 end
 
+function Shipyard.onBuild5ButtonPress()
+    local amount = amount or 5
+    -- check whether a ship with that name already exists
+    local orgname = nameTextBox.text
+    local namesList = {}
+
+	if orgname == "" then
+		displayChatMessage("You have to give your ship a name!"%_t, "Shipyard"%_t, 1)
+		return
+	end
+
+	local number = 0;
+
+	for i=1,amount do
+		number = number + 1
+        local n = orgname .." ".. number
+		while (Player():ownsShip(n) or Shipyard.isInRunningJob(n)) do
+            number = number + 1
+            n = orgname .." ".. number
+            print(number)
+		end
+        if number > 10 then -- Lets be honest, nobody needs 100 ships with the same name
+            displayChatMessage("You already have over 100 ships called '${x}'"%_t % {x = orgname}, "Shipyard"%_t, 1)
+            break
+        end
+        namesList[#namesList+1] = orgname .." ".. number
+	end
+    local singleBlock = singleBlockCheckBox.checked
+    local founder = stationFounderCheckBox.checked
+    local insurance = insuranceCheckBox.checked
+    local captain = captainCheckBox.checked
+    local seed = seedTextBox.text
+    if selection.selected and selection.selected.plan then
+        invokeServerFunction("startServerJob", nil, founder, insurance, captain, nil, nil, nil, scale, nil, namesList, selection.selected.plan)
+    else
+        invokeServerFunction("startServerJob", singleBlock, founder, insurance, captain, styleName, seed, volume, scale, material, namesList)
+    end
+end
+
+function Shipyard.isInRunningJob(name)
+    for _,job in pairs(runningJobs) do
+        print("compare", job.name, name)
+        if job.name == name then
+            print("true", job.name, name)
+            return true
+        end
+    end
+    print("false", name)
+    return false
+end
 
 -- ######################################################################################################### --
 -- ######################################        Common        ############################################# --
@@ -543,21 +605,27 @@ function Shipyard.getUpdateInterval()
 end
 
 function Shipyard.update(timeStep)
-    for i, job in pairs(runningJobs) do
-        job.executed = job.executed + timeStep
+    local jobsToRemove = 0
+    for i, job in ipairs(runningJobs) do
+        if i <= maxParallelJobs then
+            job.executed = job.executed + timeStep
 
-        if job.executed >= job.duration then
+            if job.executed >= job.duration then
+                jobsToRemove = jobsToRemove + 1
+                if onServer() then
+                    local owner = Faction(job.shipOwner)
 
-            if onServer() then
-                local owner = Faction(job.shipOwner)
-
-                if owner then
-                    Shipyard.createShip(owner, job.singleBlock, job.founder, job.insurance, job.captain, job.styleName, job.seed, job.volume, job.scale, job.material, job.shipName, job.uuid)
+                    if owner then
+                        Shipyard.createShip(owner, job.singleBlock, job.founder, job.insurance, job.captain, job.styleName, job.seed, job.volume, job.scale, job.material, job.shipName, job.uuid)
+                    end
                 end
             end
-
-            runningJobs[i] = nil
+        else
+            break
         end
+    end
+    for i=1,jobsToRemove do
+        table.remove(runningJobs, 1)
     end
 end
 
@@ -565,20 +633,14 @@ end
 -- ######################################################################################################### --
 -- ######################################     Server Sided     ############################################# --
 -- ######################################################################################################### --
-function Shipyard.startServerJob(singleBlock, founder, insurance, captain, styleName, seed, volume, scale, material, name, planToBuild)
-
+function Shipyard.startServerJob(singleBlock, founder, insurance, captain, styleName, seed, volume, scale, material, namesList, planToBuild)
+    if not namesList then print("[advShpiyard] No valid shipname") return end
     local buyer, ship, player = getInteractingFaction(callingPlayer, AlliancePrivilege.SpendResources, AlliancePrivilege.FoundShips)
     if not buyer then return end
 
     local stationFaction = Faction()
     local station = Entity()
 
-    -- shipyard may only have x jobs
-    if tablelength(runningJobs) >= 2 then
-        player:sendChatMessage(station.title, 1, "The shipyard is already at maximum capacity."%_t)
-        return 1
-    end
-    
     -- check if the player can afford the ship
     -- first create the plan
     local plan
@@ -607,72 +669,88 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
         requiredMoney = requiredMoney + Shipyard.getCrewMoney(plan)
     end
 
-    -- check if the player has enough money & resources
-    local canPay, msg, args = buyer:canPay(requiredMoney, unpack(requiredResources))
-    if not canPay then -- if there was an error, print it
-        player:sendChatMessage(station.title, 1, msg, unpack(args))
-        return;
+
+    if type(namesList) == "string" then
+        namesList = {namesList}
+    elseif type(namesList) == "table" then
+        --good to go
+    else
+        print("[advShpiyard] Not supposed to happen", namesList)
+        return
     end
 
-    -- let the player pay
-    buyer:pay(requiredMoney, unpack(requiredResources))
+    for i,name in ipairs(namesList) do
+        -- check if the player has enough money & resources
+        local canPay, msg, args = buyer:canPay(requiredMoney, unpack(requiredResources))
+        if not canPay then -- if there was an error, print it
+            player:sendChatMessage(station.title, 1, msg, unpack(args))
+            return
+        end
 
-    -- relations of the player to the faction owning the shipyard get better
-    local relationsChange = GetRelationChangeFromMoney(requiredMoney)
-    for i, v in pairs(requiredResources) do
-        relationsChange = relationsChange + v / 4
+        -- let the player pay
+        buyer:pay(requiredMoney, unpack(requiredResources))
+
+        -- relations of the player to the faction owning the shipyard get better
+        local relationsChange = GetRelationChangeFromMoney(requiredMoney)
+        for i, v in pairs(requiredResources) do
+            relationsChange = relationsChange + v / 4
+        end
+
+        Galaxy():changeFactionRelations(buyer, stationFaction, relationsChange)
+
+        -- register the ship in the player's database
+        -- The ship might get renamed in order to keep consistency in the database
+        local cx, cy = Sector():getCoordinates()
+
+        -- start the job
+        local requiredTime = math.floor(20.0 + plan.durability / 100.0)
+
+        if buyer.infiniteResources then
+            requiredTime = 1.0
+        end
+        --requiredTime = 1.0
+        local job = {}
+        job.executed = 0
+        job.duration = requiredTime
+        job.shipOwner = buyer.index
+        job.styleName = styleName
+        job.seed = seed
+        job.scale = scale
+        job.volume = volume
+        job.material = material
+        job.shipName = name
+        job.singleBlock = singleBlock
+        job.founder = founder
+        job.insurance = insurance
+        job.captain = captain
+
+        if planToBuild then
+            local position = Entity().orientation
+            local sphere = Entity():getBoundingSphere()
+            position.translation = sphere.center + random():getDirection() * (sphere.radius + plan.radius + 50)
+            local ship = Sector():createShip(Faction(Entity().factionIndex), job.shipName, plan, position)
+            ship.invincible = true
+            local crew = ship.minCrew
+            crew:add(1, CrewMan(CrewProfessionType.Captain, true, 1))
+            ship.crew = crew
+            job.uuid = ship.index.string
+        end
+
+        table.insert(runningJobs, job)
+
+        -- TODO: translation of time string
+        if tablelength(runningJobs) > maxParallelJobs then
+            player:sendChatMessage(station.title, 0, "The shipyard is at maximum capacity. Your order (".. name ..") has been enqued!"%_t)
+        else
+            player:sendChatMessage(station.title, 0, "Thank you for your purchase. Your ship will be ready in about %s."%_t, createReadableTimeString(requiredTime))
+        end
+
+        -- tell all clients in the sector that production begins
+        broadcastInvokeClientFunction("addClientJob", 0, requiredTime, name)
+
+        -- this sends an ack to the client and makes it close the window
+        --invokeClientFunction(player, "transactionComplete")
     end
-
-    Galaxy():changeFactionRelations(buyer, stationFaction, relationsChange)
-
-    -- register the ship in the player's database
-    -- The ship might get renamed in order to keep consistency in the database
-    local cx, cy = Sector():getCoordinates()
-
-    -- start the job
-    local requiredTime = math.floor(20.0 + plan.durability / 100.0)
-
-    if buyer.infiniteResources then
-        requiredTime = 1.0
-    end
-    --requiredTime = 1.0
-    local job = {}
-    job.executed = 0
-    job.duration = requiredTime
-    job.shipOwner = buyer.index
-    job.styleName = styleName
-    job.seed = seed
-    job.scale = scale
-    job.volume = volume
-    job.material = material
-    job.shipName = name
-    job.singleBlock = singleBlock
-    job.founder = founder
-    job.insurance = insurance
-    job.captain = captain
-    
-    if planToBuild then
-        local position = Entity().orientation
-        local sphere = Entity():getBoundingSphere()
-        position.translation = sphere.center + random():getDirection() * (sphere.radius + plan.radius + 50)
-        local ship = Sector():createShip(Faction(Entity().factionIndex), job.shipName, plan, position)
-        ship.invincible = true
-        local crew = ship.minCrew
-        crew:add(1, CrewMan(CrewProfessionType.Captain, true, 1))
-        ship.crew = crew
-        job.uuid = ship.index.string
-    end
-        
-    table.insert(runningJobs, job)
-
-    -- TODO: translation of time string
-    player:sendChatMessage(station.title, 0, "Thank you for your purchase. Your ship will be ready in about %s."%_t, createReadableTimeString(requiredTime))
-
-    -- tell all clients in the sector that production begins
-    broadcastInvokeClientFunction("startClientJob", 0, requiredTime)
-
-    -- this sends an ack to the client and makes it close the window
-    invokeClientFunction(player, "transactionComplete")
 end
 
 function Shipyard.createShip(buyer, singleBlock, founder, insurance, captain, styleName, seed, volume, scale, material, name, uuid)
@@ -692,15 +770,15 @@ function Shipyard.createShip(buyer, singleBlock, founder, insurance, captain, st
         plan = GeneratePlanFromStyle(style, Seed(seed), volume, 2000, 1, Material(material));
     end
 
-    
-    local ship 
-    if not uuid then
+
+    local ship
+    if not uuid then --ship generated with stylesheet
         plan:scale(vec3(scale, scale, scale))
         local position = station.orientation
         local sphere = station:getBoundingSphere()
         position.translation = sphere.center + random():getDirection() * (sphere.radius + plan.radius + 50);
         ship = Sector():createShip(buyer, name, plan, position);
-    else
+    else -- ship loaded from players designs
         ship = Entity(Uuid(uuid))
         ship.invincible = false
         ship.factionIndex = buyer.index
@@ -745,8 +823,8 @@ function Shipyard.sendCraftStyles()
 
     invokeClientFunction(player, "receiveStyles", styles)
 
-    for _, job in pairs(runningJobs) do
-        invokeClientFunction(player, "startClientJob", job.executed, job.duration)
+    for _, job in ipairs(runningJobs) do
+        invokeClientFunction(player, "addClientJob", job.executed, job.duration, job.shipName)
     end
 
 end
@@ -758,4 +836,3 @@ end
 function Shipyard.secure()
     return runningJobs
 end
-
