@@ -435,7 +435,6 @@ function Shipyard.addClientJob(executed, duration, name)
     job.executed = executed
     job.duration = duration
     job.name = name
-    print(name)
     table.insert(runningJobs, job)
 end
 
@@ -565,7 +564,6 @@ function Shipyard.onBuild5ButtonPress()
 		while (Player():ownsShip(n) or Shipyard.isInRunningJob(n)) do
             number = number + 1
             n = orgname .." ".. number
-            print(number)
 		end
         if number > 10 then -- Lets be honest, nobody needs 100 ships with the same name
             displayChatMessage("You already have over 100 ships called '${x}'"%_t % {x = orgname}, "Shipyard"%_t, 1)
@@ -587,13 +585,10 @@ end
 
 function Shipyard.isInRunningJob(name)
     for _,job in pairs(runningJobs) do
-        print("compare", job.name, name)
         if job.name == name then
-            print("true", job.name, name)
             return true
         end
     end
-    print("false", name)
     return false
 end
 
