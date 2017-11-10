@@ -5,7 +5,8 @@ require ("defaultscripts")
 require ("randomext")
 require ("stationextensions")
 require ("randomext")
-require("stringutility")
+require ("stringutility")
+require ("merchantutility")
 local Dialog = require("dialogutility")
 
 -- Don't remove or alter the following comment, it tells the game the namespace this script lives in. If you remove it, the script will break.
@@ -235,7 +236,7 @@ end
 
 function Shipyard.renderUI()
 
-    local fee = GetFee(Faction(), Player())
+    local fee = GetFee(Faction(), Player()) * 2
 
     local planMoney = preview:getMoneyValue()
 
@@ -257,8 +258,7 @@ function Shipyard.renderUI()
 
     -- plan resources
     for i, v in pairs(planResources) do
-        table.insert(planResourcesFee, v * fee)
-        table.insert(planResourcesTotal, v + v * fee)
+        table.insert(planResourcesTotal, v)
     end
 
     local offset = 10
@@ -338,22 +338,15 @@ function Shipyard.getRequiredMoney(plan, orderingFaction)
     local requiredMoney = plan:getMoneyValue();
     requiredMoney = requiredMoney
 
-    local fee = GetFee(Faction(), orderingFaction)
+    local fee = GetFee(Faction(), orderingFaction) * 2
+    fee = requiredMoney * fee
+    requiredMoney = requiredMoney + fee
 
-    requiredMoney = requiredMoney + requiredMoney * fee
-
-    return requiredMoney
+    return requiredMoney, fee
 end
 
 function Shipyard.getRequiredResources(plan, orderingFaction)
-    local resources = {plan:getResourceValue()}
-    local fee = GetFee(Faction(), orderingFaction)
-
-    for i, v in pairs(resources) do
-        resources[i] = v + v * fee
-    end
-
-    return resources
+    return {plan:getResourceValue()}
 end
 
 function Shipyard.transactionComplete()
@@ -492,6 +485,12 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
         return 1
     end
 
+    local settings = GameSettings()
+    if settings.maximumPlayerShips > 0 and buyer.numShips >= settings.maximumPlayerShips then
+        player:sendChatMessage("Server"%_t, 1, "Maximum ship limit per faction (%s) of this server reached!"%_t, settings.maximumPlayerShips)
+        return
+    end
+
     -- check if the player can afford the ship
     -- first create the plan
     local plan
@@ -507,7 +506,7 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
     plan:scale(vec3(scale, scale, scale))
 
     -- get the money required for the plan
-    local requiredMoney = Shipyard.getRequiredMoney(plan, buyer)
+    local requiredMoney, fee = Shipyard.getRequiredMoney(plan, buyer)
     local requiredResources = Shipyard.getRequiredResources(plan, buyer)
 
     if insurance then
@@ -524,6 +523,8 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
         player:sendChatMessage(station.title, 1, msg, unpack(args))
         return;
     end
+
+    receiveTransactionTax(station, fee)
 
     -- let the player pay
     buyer:pay(requiredMoney, unpack(requiredResources))
@@ -575,6 +576,23 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
 end
 
 function Shipyard.createShip(buyer, singleBlock, founder, insurance, captain, styleName, seed, volume, scale, material, name)
+
+    local ownedShips = 0
+    local player
+    if buyer.isAlliance then
+        ownedShips = Alliance(buyer.index).numShips
+    elseif buyer.isPlayer then
+        player = Player(buyer.index)
+        ownedShips = player.numShips
+    end
+
+    local settings = GameSettings()
+    if settings.maximumPlayerShips > 0 and ownedShips >= settings.maximumPlayerShips then
+        if player then
+            player:sendChatMessage("Server"%_t, 1, "Maximum ship limit per faction (%s) of this server reached!"%_t, settings.maximumPlayerShips)
+        end
+        return
+    end
 
     local station = Entity()
     local stationFaction = Faction()
