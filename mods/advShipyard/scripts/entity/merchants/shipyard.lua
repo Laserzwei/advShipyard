@@ -48,8 +48,8 @@ local material
 local preview
 
 local runningJobs = {}
-local maxParallelJobs = 20   --If you change this make sure it's the same on the server as well as on the client
-local shipsPerButton = 100
+local maxParallelJobs = 2   --If you change this make sure it's the same on the server as well as on the client
+local shipsPerButton = 5
 
 
 function Shipyard.initialize()
@@ -702,7 +702,7 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
         if buyer.infiniteResources then
             requiredTime = 1.0
         end
-        requiredTime = 25.0
+
         local job = {}
         job.executed = 0
         job.duration = requiredTime
