@@ -305,8 +305,12 @@ function Shipyard.renderUI()
 
     -- plan resources
     for i, v in pairs(planResources) do
-        table.insert(planResourcesTotal, v)
-        local offset = 10
+        table.insert(planResourcesFee, v * fee)
+        table.insert(planResourcesTotal, v + v * fee)
+    end
+
+    local offset = 10
+    if not shipSelectionWindow.visible then
         offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Ship Costs"%_t, planMoney, planResources)
         offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Insurance"%_t, insuranceMoney)
         offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Crew"%_t, crewMoney)
