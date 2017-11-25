@@ -787,7 +787,6 @@ function Shipyard.createShip(buyer, singleBlock, founder, insurance, captain, st
         plan = GeneratePlanFromStyle(style, Seed(seed), volume, 2000, 1, Material(material));
     end
 
-    name = "leck mich am Arsch"
     local ship
     if not uuid then --ship generated with stylesheet
         plan:scale(vec3(scale, scale, scale))
