@@ -756,8 +756,10 @@ function Shipyard.createShip(buyer, singleBlock, founder, insurance, captain, st
     local ownedShips = 0
     local player
     if buyer.isAlliance then
+        buyer = Alliance(buyer.index)
         ownedShips = Alliance(buyer.index).numShips
     elseif buyer.isPlayer then
+        buyer = Player(buyer.index)
         player = Player(buyer.index)
         ownedShips = player.numShips
     end
@@ -785,16 +787,18 @@ function Shipyard.createShip(buyer, singleBlock, founder, insurance, captain, st
         plan = GeneratePlanFromStyle(style, Seed(seed), volume, 2000, 1, Material(material));
     end
 
-
+    name = "leck mich am Arsch"
     local ship
     if not uuid then --ship generated with stylesheet
         plan:scale(vec3(scale, scale, scale))
         local position = station.orientation
         local sphere = station:getBoundingSphere()
         position.translation = sphere.center + random():getDirection() * (sphere.radius + plan.radius + 50);
-        ship = Sector():createShip(buyer, name, plan, position);
+        while buyer:ownsShip(name) do print("sigh vanilaaaaaaaah", name, "buyer:", buyer.name); name = name.."1" end
+        ship = Sector():createShip(buyer, name, plan, position)
     else -- ship loaded from players designs
         ship = Entity(Uuid(uuid))
+        if not ship then print("skipping invalid ship:", name, "buyer:", buyer.name, "uuid:", uuid) return end
         ship.invincible = false
         ship.factionIndex = buyer.index
         ship.name = name
@@ -821,7 +825,6 @@ function Shipyard.createShip(buyer, singleBlock, founder, insurance, captain, st
 
         ship.crew = crew
     end
-
 end
 
 -- sends all craft styles to a client
