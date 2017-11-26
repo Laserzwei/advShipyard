@@ -53,7 +53,7 @@ function Shipyard.initialize()
 
             math.randomseed(Sector().seed + Sector().numEntities)
             addConstructionScaffold(station)
-            math.randomseed(os.time())
+            math.randomseed(appTimeMs())
         end
     end
 
