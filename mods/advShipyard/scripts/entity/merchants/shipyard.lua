@@ -648,6 +648,7 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
         plan = planToBuild
     else
         local style = stationFaction:getShipStyle(styleName)
+        if not style then player:sendChatMessage("Server"%_t, 1, "No CraftStyle selected/available!") return end
         plan = GeneratePlanFromStyle(style, Seed(seed), volume, 2000, 1, Material(material))
     end
 
@@ -731,6 +732,7 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
             local crew = ship.minCrew
             crew:add(1, CrewMan(CrewProfessionType.Captain, true, 1))
             ship.crew = crew
+            ship.factionIndex = -1
             job.uuid = ship.index.string
         end
 
