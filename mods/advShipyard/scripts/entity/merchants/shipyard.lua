@@ -65,6 +65,7 @@ function Shipyard.initialize()
             math.randomseed(Sector().seed + Sector().numEntities)
             addConstructionScaffold(station)
             math.randomseed(appTimeMs())
+            Sector():registerCallback("onRestoredFromDisk", "onRestoredFromDisk")
         end
     end
 
@@ -590,6 +591,12 @@ end
 -- ######################################################################################################### --
 -- ######################################        Common        ############################################# --
 -- ######################################################################################################### --
+function onRestoredFromDisk(timeSinceLastSimulation)
+    invokeClientFunction("update", timeSinceLastSimulation)
+    update(timeSinceLastSimulation)
+end
+
+
 function Shipyard.getUpdateInterval()
     return 1.0
 end
