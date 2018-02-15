@@ -204,6 +204,8 @@ function Shipyard.initUI()
     organizer5.padding = 10
     organizer5.margin = 10
     organizer5:placeElementBottom(button5)
+    button5.active = false
+    button5.visible = false
 
     -- create the viewer
     planDisplayer = container:createPlanDisplayer(vsplit.right);
@@ -631,7 +633,7 @@ end
 -- ######################################     Server Sided     ############################################# --
 -- ######################################################################################################### --
 function Shipyard.startServerJob(singleBlock, founder, insurance, captain, styleName, seed, volume, scale, material, namesList, planToBuild)
-    if not namesList then print("[advShpiyard] No valid shipname") return end
+    if not namesList then print("[advShipyard] No valid shipname") return end
     local buyer, ship, player = getInteractingFaction(callingPlayer, AlliancePrivilege.SpendResources, AlliancePrivilege.FoundShips)
     if not buyer then return end
 
@@ -679,7 +681,7 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
     elseif type(namesList) == "table" then
         --good to go
     else
-        print("[advShpiyard] Not supposed to happen", namesList)
+        print("[advShipyard] Not supposed to happen", namesList)
         return
     end
 
@@ -802,14 +804,13 @@ function Shipyard.createShip(buyer, singleBlock, founder, insurance, captain, st
         local position = station.orientation
         local sphere = station:getBoundingSphere()
         position.translation = sphere.center + random():getDirection() * (sphere.radius + plan.radius + 50);
-        while buyer:ownsShip(name) do print("sigh vanilaaaaaaaah", name, "buyer:", buyer.name); name = name.."1" end
+        --while buyer:ownsShip(name) do print("sigh vanilaaaaaaaah", name, "buyer:", buyer.name); name = name.."1" end
         ship = Sector():createShip(buyer, name, plan, position)
     else -- ship loaded from players designs
         ship = Entity(Uuid(uuid))
         if not ship then print("skipping invalid ship:", name, "buyer:", buyer.name, "uuid:", uuid) return end
         ship.invincible = false
         ship.factionIndex = buyer.index
-        ship.name = name
         ship.title = ""
         ship.crew = Crew()
     end
@@ -826,6 +827,8 @@ function Shipyard.createShip(buyer, singleBlock, founder, insurance, captain, st
         ship:invokeFunction("data/scripts/entity/insurance.lua", "internalInsure")
     end
 
+    ship:addScriptOnce("mods/advShipyard/scripts/entity/rename.lua", name)
+    ship:invokeFunction("mods/advShipyard/scripts/entity/rename.lua", "setName", name)
     if captain then
         -- add base crew
         local crew = ship.minCrew

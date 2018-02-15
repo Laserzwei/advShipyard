@@ -57,11 +57,19 @@ function Shipyard.initialize()
         end
     end
 
+    if onServer() then
+        Sector():registerCallback("onRestoredFromDisk", "onRestoredFromDisk")
+    end
+
     if onClient() and EntityIcon().icon == "" then
         EntityIcon().icon = "data/textures/icons/pixel/shipyard2.png"
         InteractionText(station.index).text = Dialog.generateStationInteractionText(station, random())
     end
 
+end
+
+function Shipyard.onRestoredFromDisk(timeSinceLastSimulation)
+    Shipyard.update(timeSinceLastSimulation)
 end
 
 -- if this function returns false, the script will not be listed in the interaction window,
@@ -668,5 +676,7 @@ end
 function Shipyard.secure()
     return runningJobs
 end
+
+
 local fail, err = pcall(require, "mods/advShipyard/scripts/entity/merchants/shipyard")
 if not fail then print("Failed to load advShipyard", err) end
