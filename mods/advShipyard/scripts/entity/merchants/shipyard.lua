@@ -358,10 +358,6 @@ function Shipyard.updatePlan()
         end
     end
 
-    if selection.selected and selection.selected.plan then
-        preview = selection.selected.plan
-    end
-
     preview:scale(vec3(scale, scale, scale))
 
     -- set to display
@@ -406,6 +402,34 @@ end
 
 function Shipyard.getRequiredResources(plan, orderingFaction)
     return {plan:getResourceValue()}
+end
+
+function Shipyard.getRequiredMoneyTest(styleName, seed, volume, material, scale)
+    local style = Faction():getShipStyle(styleName)
+    plan = GeneratePlanFromStyle(style, Seed(seed), volume, 2000, 1, Material(material))
+
+    plan:scale(vec3(scale, scale, scale))
+
+    -- get the money required for the plan
+    local buyer = Faction(Player(callingPlayer).craft.factionIndex)
+    return Shipyard.getRequiredMoney(plan, buyer)
+end
+
+function Shipyard.getRequiredResourcesTest(styleName, seed, volume, material, scale)
+    local style = Faction():getShipStyle(styleName)
+    plan = GeneratePlanFromStyle(style, Seed(seed), volume, 2000, 1, Material(material))
+
+    plan:scale(vec3(scale, scale, scale))
+
+    -- get the money required for the plan
+    local buyer = Faction(Player(callingPlayer).craft.factionIndex)
+    local requiredResources = Shipyard.getRequiredResources(plan, buyer)
+
+    for i = 1, NumMaterials() do
+        requiredResources[i] = requiredResources[i] or 0
+    end
+
+    return unpack(requiredResources)
 end
 
 function Shipyard.transactionComplete()
