@@ -360,6 +360,11 @@ function Shipyard.updatePlan()
 
     preview:scale(vec3(scale, scale, scale))
 
+
+    if selection.selected and selection.selected.plan then
+        preview = selection.selected.plan
+    end
+
     -- set to display
     planDisplayer.plan = preview
 
