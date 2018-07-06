@@ -1,2 +1,2 @@
 config = {}
-config.VERSION = "1.5"
+config.VERSION = "1.8.0"

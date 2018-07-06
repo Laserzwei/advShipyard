@@ -40,7 +40,7 @@ local selectionPlandisplayer
 
 -- building ships
 local styles = {}
-local styleName
+local styleName = ""
 local seed = 0;
 local volume = 150;
 local scale = 1.0;
@@ -509,12 +509,14 @@ function Shipyard.onDesignButtonPress()
     local workshopShips = {getWorkshopShips()}
 
     for _, ship in ipairs(playerships) do
-        local item = PlanSelectionItem(ship)
-        selection:add(item)
+        if string.sub(ship, -4) == ".xml" then  -- in 1.8.1 getSavedShips() also returns the .png.and .meta which result in invalid items
+            local item = CraftDesignSelectionItem(ship)
+            selection:add(item)
+        end
     end
 
     for _, ship in ipairs(workshopShips) do
-        local item = PlanSelectionItem(ship)
+        local item = CraftDesignSelectionItem(ship)
         selection:add(item)
     end
 end
@@ -669,6 +671,11 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
     local stationFaction = Faction()
     local station = Entity()
 
+    if tablelength(runningJobs) >= maxParallelJobs then
+        player:sendChatMessage("Server"%_t, 1, "The shipyard is already at maximum capacity."%_t)
+        return
+    end
+
     local settings = GameSettings()
     if settings.maximumPlayerShips > 0 and buyer.numShips >= settings.maximumPlayerShips then
         player:sendChatMessage("Server"%_t, 1, "Maximum ship limit per faction (%s) of this server reached!"%_t, settings.maximumPlayerShips)
@@ -771,6 +778,13 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
             crew:add(1, CrewMan(CrewProfessionType.Captain, true, 1))
             ship.crew = crew
             ship.factionIndex = -1
+
+            ship:setValue("timePassed", 0)
+            ship:setValue("duration", requiredTime)
+            ship:setValue("name", name)
+            ship:setValue("buyer", buyer.index)
+
+            ship:addScriptOnce("mods/advShipyard/scripts/entity/timedFactionTransferer.lua")
             job.uuid = ship.index.string
         end
 
@@ -838,10 +852,10 @@ function Shipyard.createShip(buyer, singleBlock, founder, insurance, captain, st
     else -- ship loaded from players designs
         ship = Entity(Uuid(uuid))
         if not ship then print("skipping invalid ship:", name, "buyer:", buyer.name, "uuid:", uuid) return end
-        ship.invincible = false
-        ship.factionIndex = buyer.index
-        ship.title = ""
-        ship.crew = Crew()
+        --ship.invincible = false
+        --ship.factionIndex = buyer.index
+        --ship.title = ""
+        --ship.crew = Crew()
     end
 
     -- add base scripts

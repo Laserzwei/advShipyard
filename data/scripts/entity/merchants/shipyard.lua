@@ -31,7 +31,7 @@ local scaleSlider
 
 -- building ships
 local styles = {}
-local styleName
+local styleName = ""
 local seed = 0;
 local volume = 150;
 local scale = 1.0;
@@ -300,7 +300,7 @@ function Shipyard.updatePlan()
         -- create a white plating block with size 1, 1, 1 and the selected material at the center of the new plan
         preview:addBlock(vec3(0, 0, 0), vec3(1, 1, 1), -1, -1, ColorRGB(1, 1, 1), Material(material), Matrix(), BlockType.Hull)
     else
-        styleName = styleCombo.selectedEntry;
+        styleName = styleCombo.selectedEntry or "";
 
         local style = styles[styleName]
         if style == nil then
@@ -529,10 +529,9 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
 
     -- check if the player can afford the ship
     -- first create the plan
-    local plan
+    local plan = BlockPlan()
 
     if singleBlock then
-        plan = BlockPlan()
         plan:addBlock(vec3(0, 0, 0), vec3(2, 2, 2), -1, -1, ColorRGB(1, 1, 1), Material(material), Matrix(), BlockType.Hull)
     else
         local style = stationFaction:getShipStyle(styleName)
@@ -706,5 +705,5 @@ function Shipyard.secure()
 end
 
 
-local fail, err = pcall(require, "mods/advShipyard/scripts/entity/merchants/shipyard")
-if not fail then print("Failed to load advShipyard", err) end
+local success, err = pcall(require, "mods/advShipyard/scripts/entity/merchants/shipyard")
+if not success then print("Failed to load advShipyard", err) end
