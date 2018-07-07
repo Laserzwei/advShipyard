@@ -790,7 +790,6 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
 
         table.insert(runningJobs, job)
 
-        -- TODO: translation of time string
         if tablelength(runningJobs) > maxParallelJobs then
             player:sendChatMessage(station.title, 0, "The shipyard is at maximum capacity. Your order (".. name ..") has been enqued!"%_t)
         else
@@ -799,9 +798,6 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
 
         -- tell all clients in the sector that production begins
         broadcastInvokeClientFunction("addClientJob", 0, requiredTime, name)
-
-        -- this sends an ack to the client and makes it close the window
-        --invokeClientFunction(player, "transactionComplete")
     end
 end
 
@@ -847,15 +843,10 @@ function Shipyard.createShip(buyer, singleBlock, founder, insurance, captain, st
         local position = station.orientation
         local sphere = station:getBoundingSphere()
         position.translation = sphere.center + random():getDirection() * (sphere.radius + plan.radius + 50);
-        --while buyer:ownsShip(name) do print("sigh vanilaaaaaaaah", name, "buyer:", buyer.name); name = name.."1" end
         ship = Sector():createShip(buyer, name, plan, position)
     else -- ship loaded from players designs
         ship = Entity(Uuid(uuid))
         if not ship then print("skipping invalid ship:", name, "buyer:", buyer.name, "uuid:", uuid) return end
-        --ship.invincible = false
-        --ship.factionIndex = buyer.index
-        --ship.title = ""
-        --ship.crew = Crew()
     end
 
     -- add base scripts

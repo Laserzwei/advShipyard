@@ -5,13 +5,11 @@ tFT = {}
 
 local duration
 local timePassed
-local startsAt
 
 
 function tFT.initialize()
     duration = Entity():getValue("duration")
     timePassed = Entity():getValue("timePassed")
-    startsAt = Entity():getValue("startsAt")
     if not duration then
         print(Entity().name, "duration not set")
         terminate()
@@ -36,7 +34,7 @@ function tFT.update(timestep)
             if onServer() then
                 Entity().name = Entity():getValue("name")
                 Entity().invincible = false
-                Entity():setValue("startsAt", nil)
+
                 Entity():setValue("timePassed", nil)
                 Entity():setValue("duration", nil)
                 Entity():setValue("name", nil)
