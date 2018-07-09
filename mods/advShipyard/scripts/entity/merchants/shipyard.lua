@@ -49,7 +49,6 @@ local preview
 
 local runningJobs = {}
 local maxParallelJobs = 2   --If you change this make sure it's the same on the server as well as on the client
-local shipsPerButton = 5
 
 
 function Shipyard.initialize()
@@ -198,14 +197,6 @@ function Shipyard.initUI()
     organizer.margin = 10
     organizer.marginBottom = 50
     organizer:placeElementBottom(button)
-
-	local button5 = container:createButton(Rect(), "Build"%_t .. " (5)", "onBuild5ButtonPress");
-    local organizer5 = UIOrganizer(left)
-    organizer5.padding = 10
-    organizer5.margin = 10
-    organizer5:placeElementBottom(button5)
-    button5.active = false
-    button5.visible = false
 
     -- create the viewer
     planDisplayer = container:createPlanDisplayer(vsplit.right);
@@ -572,44 +563,6 @@ function Shipyard.onBuildButtonPress()
         invokeServerFunction("startServerJob", singleBlock, founder, insurance, captain, styleName, seed, volume, scale, material, name)
     end
 
-end
-
-function Shipyard.onBuild5ButtonPress()
-    local amount = shipsPerButton or 5
-    -- check whether a ship with that name already exists
-    local orgname = nameTextBox.text
-    local namesList = {}
-
-	if orgname == "" then
-		displayChatMessage("You have to give your ship a name!"%_t, "Shipyard"%_t, 1)
-		return
-	end
-
-	local number = 0;
-
-	for i=1,amount do
-		number = number + 1
-        local n = orgname .." ".. number
-		while (Player():ownsShip(n) or Shipyard.isInRunningJob(n)) do
-            number = number + 1
-            n = orgname .." ".. number
-		end
-        if number > 100 then -- Lets be honest, nobody needs 100 ships with the same name
-            displayChatMessage("You already have over 100 ships called '${x}'"%_t % {x = orgname}, "Shipyard"%_t, 1)
-            break
-        end
-        namesList[#namesList+1] = orgname .." ".. number
-	end
-    local singleBlock = singleBlockCheckBox.checked
-    local founder = stationFounderCheckBox.checked
-    local insurance = insuranceCheckBox.checked
-    local captain = captainCheckBox.checked
-    local seed = seedTextBox.text
-    if selection.selected and selection.selected.plan then
-        invokeServerFunction("startServerJob", nil, founder, insurance, captain, nil, nil, nil, scale, nil, namesList, selection.selected.plan)
-    else
-        invokeServerFunction("startServerJob", singleBlock, founder, insurance, captain, styleName, seed, volume, scale, material, namesList)
-    end
 end
 
 function Shipyard.isInRunningJob(name)
