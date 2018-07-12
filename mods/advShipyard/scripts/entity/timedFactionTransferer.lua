@@ -6,19 +6,19 @@ tFT = {}
 local duration
 local timePassed
 
-
 function tFT.initialize()
     duration = Entity():getValue("duration")
-    timePassed = Entity():getValue("timePassed")
-    if not duration then
-        print(Entity().name, "duration not set")
-        terminate()
+    timePassed = Entity():getValue("timePassed") or 0
+    if onServer() then
+        if not duration then
+            print(Entity().name, "duration not set")
+            terminate()
+        end
+        if not timePassed then
+            timePassed = 0
+            Entity():setValue("timePassed", timePassed)
+        end
     end
-    if not timePassed then
-        timePassed = 0
-        Entity():setValue("timePassed", timePassed)
-    end
-
 end
 
 function tFT.getUpdateInterval()
@@ -39,10 +39,12 @@ function tFT.update(timestep)
                 Entity():setValue("duration", nil)
                 Entity():setValue("name", nil)
                 Entity():setValue("buyer", nil)
-                Player(owner):sendChatMessage(Entity().name, ChatMessageType.Normal, "Your Ship: "..Entity().name.." has finished")
+                Faction(owner):sendChatMessage("Shipyard", ChatMessageType.Normal, "Your ship: "..(Entity().name or "(unnamed)").." has finished")
             end
             Entity().factionIndex =  owner
             terminate()
+        else
+            print("[advShipyard]  No owner found:", Entity().index.string, Sector():getCoordinates())
         end
     end
 end

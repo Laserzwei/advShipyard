@@ -9,6 +9,8 @@ require ("stringutility")
 require ("merchantutility")
 local Dialog = require("dialogutility")
 
+local config = require ("mods.advShipyard.config.advshipyard")
+
 -- Don't remove or alter the following comment, it tells the game the namespace this script lives in. If you remove it, the script will break.
 -- namespace Shipyard
 Shipyard = {}
@@ -48,7 +50,6 @@ local material
 local preview
 
 local runningJobs = {}
-local maxParallelJobs = 2   --If you change this make sure it's the same on the server as well as on the client
 
 
 function Shipyard.initialize()
@@ -64,8 +65,11 @@ function Shipyard.initialize()
             math.randomseed(Sector().seed + Sector().numEntities)
             addConstructionScaffold(station)
             math.randomseed(appTimeMs())
-            Sector():registerCallback("onRestoredFromDisk", "onRestoredFromDisk")
         end
+    end
+
+    if onServer() then
+        Sector():registerCallback("onRestoredFromDisk", "onRestoredFromDisk")
     end
 
     if onClient() and EntityIcon().icon == "" then
@@ -73,6 +77,10 @@ function Shipyard.initialize()
         InteractionText(station.index).text = Dialog.generateStationInteractionText(station, random())
     end
 
+end
+
+function Shipyard.onRestoredFromDisk(timeSinceLastSimulation)
+    Shipyard.update(timeSinceLastSimulation)
 end
 
 -- if this function returns false, the script will not be listed in the interaction window,
@@ -94,7 +102,6 @@ function Shipyard.initUI()
     window.showCloseButton = 1
     window.moveable = 1
     menu:registerWindow(window, "Build Ship"%_t);
-
 
     local container = window:createContainer(Rect(vec2(0, 0), size));
 
@@ -251,26 +258,23 @@ function Shipyard.renderUIIndicator(px, py, size)
     local y = py + size / 2;
 
     for i, job in pairs(runningJobs) do
-        if i <= maxParallelJobs then
-            -- outer rect
-            local dx = x
-            local dy = y + i * 5
 
-            local sx = size + 2
-            local sy = 4
+        -- outer rect
+        local dx = x
+        local dy = y + i * 5
 
-            drawRect(Rect(dx, dy, sx + dx, sy + dy), ColorRGB(0, 0, 0));
+        local sx = size + 2
+        local sy = 4
 
-            -- inner rect
-            sx = sx - 2
-            sy = sy - 2
+        drawRect(Rect(dx, dy, sx + dx, sy + dy), ColorRGB(0, 0, 0));
 
-            sx = sx * job.executed / job.duration
+        -- inner rect
+        sx = sx - 2
+        sy = sy - 2
 
-            drawRect(Rect(dx + 1, dy + 1, sx + dx + 1, sy + dy + 1), ColorRGB(0.66, 0.66, 1.0));
-        else
-            break
-        end
+        sx = sx * job.executed / job.duration
+
+        drawRect(Rect(dx + 1, dy + 1, sx + dx + 1, sy + dy + 1), ColorRGB(0.66, 0.66, 1.0));
     end
 
 end
@@ -299,8 +303,7 @@ function Shipyard.renderUI()
 
     -- plan resources
     for i, v in pairs(planResources) do
-        table.insert(planResourcesFee, v * fee)
-        table.insert(planResourcesTotal, v + v * fee)
+        table.insert(planResourcesTotal, v)
     end
 
     local offset = 10
@@ -338,7 +341,7 @@ function Shipyard.updatePlan()
         -- create a white plating block with size 1, 1, 1 and the selected material at the center of the new plan
         preview:addBlock(vec3(0, 0, 0), vec3(1, 1, 1), -1, -1, ColorRGB(1, 1, 1), Material(material), Matrix(), BlockType.Hull)
     else
-        styleName = styleCombo.selectedEntry;
+        styleName = styleCombo.selectedEntry or "";
 
         local style = styles[styleName]
         if style == nil then
@@ -565,50 +568,29 @@ function Shipyard.onBuildButtonPress()
 
 end
 
-function Shipyard.isInRunningJob(name)
-    for _,job in pairs(runningJobs) do
-        if job.name == name then
-            return true
-        end
-    end
-    return false
-end
 
 -- ######################################################################################################### --
 -- ######################################        Common        ############################################# --
 -- ######################################################################################################### --
-function onRestoredFromDisk(timeSinceLastSimulation)
-    invokeClientFunction("update", timeSinceLastSimulation)
-    update(timeSinceLastSimulation)
-end
-
-
 function Shipyard.getUpdateInterval()
     return 1.0
 end
 
 function Shipyard.update(timeStep)
-    local jobsToRemove = 0
-    for i, job in ipairs(runningJobs) do
-        if i <= maxParallelJobs then
-            job.executed = job.executed + timeStep
+    for i, job in pairs(runningJobs) do
+        job.executed = job.executed + timeStep
 
-            if job.executed >= job.duration then
-                jobsToRemove = jobsToRemove + 1
-                if onServer() then
-                    local owner = Faction(job.shipOwner)
+        if job.executed >= job.duration then
 
-                    if owner then
-                        Shipyard.createShip(owner, job.singleBlock, job.founder, job.insurance, job.captain, job.styleName, job.seed, job.volume, job.scale, job.material, job.shipName, job.uuid)
-                    end
+            if onServer() then
+                local owner = Faction(job.shipOwner)
+
+                if owner then
+                    Shipyard.createShip(owner, job.singleBlock, job.founder, job.insurance, job.captain, job.styleName, job.seed, job.volume, job.scale, job.material, job.shipName, job.uuid)
                 end
             end
-        else
-            break
+            runningJobs[i] = nil
         end
-    end
-    for i=1,jobsToRemove do
-        table.remove(runningJobs, 1)
     end
 end
 
@@ -624,9 +606,10 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
     local stationFaction = Faction()
     local station = Entity()
 
-    if tablelength(runningJobs) >= maxParallelJobs then
-        player:sendChatMessage("Server"%_t, 1, "The shipyard is already at maximum capacity."%_t)
-        return
+    -- shipyard may only have x jobs
+    if tablelength(runningJobs) >= config.maxParallelShips then
+        player:sendChatMessage(station.title, 1, "The shipyard is already at maximum capacity."%_t)
+        return 1
     end
 
     local settings = GameSettings()
@@ -637,10 +620,9 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
 
     -- check if the player can afford the ship
     -- first create the plan
-    local plan
+    local plan = BlockPlan()
 
     if singleBlock then
-        plan = BlockPlan()
         plan:addBlock(vec3(0, 0, 0), vec3(2, 2, 2), -1, -1, ColorRGB(1, 1, 1), Material(material), Matrix(), BlockType.Hull)
     elseif planToBuild and not styleName then
         plan = planToBuild
@@ -743,11 +725,7 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
 
         table.insert(runningJobs, job)
 
-        if tablelength(runningJobs) > maxParallelJobs then
-            player:sendChatMessage(station.title, 0, "The shipyard is at maximum capacity. Your order (".. name ..") has been enqued!"%_t)
-        else
-            player:sendChatMessage(station.title, 0, "Thank you for your purchase. Your ship will be ready in about %s."%_t, createReadableTimeString(requiredTime))
-        end
+        player:sendChatMessage(station.title, 0, "Thank you for your purchase. Your ship will be ready in about %s."%_t, createReadableTimeString(requiredTime))
 
         -- tell all clients in the sector that production begins
         broadcastInvokeClientFunction("addClientJob", 0, requiredTime, name)
