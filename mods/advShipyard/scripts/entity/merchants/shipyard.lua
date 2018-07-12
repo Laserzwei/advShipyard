@@ -504,13 +504,13 @@ function Shipyard.onDesignButtonPress()
 
     for _, ship in ipairs(playerships) do
         if string.sub(ship, -4) == ".xml" then  -- in 1.8.1 getSavedShips() also returns the .png.and .meta which result in invalid items
-            local item = CraftDesignSelectionItem(ship)
+            local item = PlanSelectionItem(ship)
             selection:add(item)
         end
     end
 
     for _, ship in ipairs(workshopShips) do
-        local item = CraftDesignSelectionItem(ship)
+        local item = PlanSelectionItem(ship)
         selection:add(item)
     end
 end
