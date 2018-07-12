@@ -7,7 +7,7 @@ local duration
 local timePassed
 
 function tFT.initialize()
-    duration = Entity():getValue("duration")
+    duration = Entity():getValue("duration") or 0
     timePassed = Entity():getValue("timePassed") or 0
     if onServer() then
         if not duration then
