@@ -2,21 +2,17 @@
 -- Don't remove or alter the following comment, it tells the game the namespace this script lives in. If you remove it, the script will break.
 -- namespace tFT
 tFT = {}
-
-local duration
 local timePassed
 
 function tFT.initialize()
-    duration = Entity():getValue("duration") or 0
-    timePassed = Entity():getValue("timePassed") or 0
+
     if onServer() then
-        if not duration then
+        if not Entity():getValue("duration") then
             print(Entity().name, "duration not set")
             terminate()
         end
-        if not timePassed then
-            timePassed = 0
-            Entity():setValue("timePassed", timePassed)
+        if not Entity():getValue("timePassed") then
+            Entity():setValue("timePassed", 0)
         end
     end
 end
@@ -26,8 +22,10 @@ function tFT.getUpdateInterval()
 end
 
 function tFT.update(timestep)
-    timePassed = timePassed + timestep
-    Entity():setValue("timePassed", timePassed)
+    local timePassed = Entity():getValue("timePassed") + timestep
+    local duration = Entity():getValue("duration") or math.huge
+    if onServer() then Entity():setValue("timePassed", timePassed) end
+
     if timePassed >= duration then
         local owner = Entity():getValue("buyer")
         if owner then
@@ -47,9 +45,11 @@ function tFT.update(timestep)
             print("[advShipyard]  No owner found:", Entity().index.string, Sector():getCoordinates())
         end
     end
+
 end
 
 function tFT.renderUIIndicator(px, py, size)
+    local duration = Entity():getValue("duration")
     if duration then
         local x = px - size / 2
         local y = py + size / 2 + 6
@@ -64,7 +64,7 @@ function tFT.renderUIIndicator(px, py, size)
         sx = sx - 2
         sy = sy - 2
 
-        sx = sx * timePassed / duration
+        sx = sx * (Entity():getValue("timePassed") or 0) / duration
 
         drawRect(Rect(x + 1, y + 1, sx + x + 1, sy + y + 1), ColorRGB(0.66, 0.66, 1.0))
     end
