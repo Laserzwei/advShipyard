@@ -510,8 +510,10 @@ function Shipyard.onDesignButtonPress()
     end
 
     for _, ship in ipairs(workshopShips) do
-        local item = CraftDesignSelectionItem(ship)
-        selection:add(item)
+        if string.sub(ship, -16) ~= "turretdesign.xml" then
+            local item = CraftDesignSelectionItem(ship)
+            selection:add(item)
+        end
     end
 end
 
