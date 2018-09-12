@@ -36,7 +36,7 @@ local selectShipDesignButton
 --ship selectionwindow
 local selectDesignButton
 local cancelButton
-local selection
+local planSelection
 local selectionPlandisplayer
 
 
@@ -222,13 +222,13 @@ function Shipyard.initUI()
     selectDesignButton = shipSelectionWindow:createButton(Rect(vec2(10, shipSelectionWindow.size.y-50), vec2(90, shipSelectionWindow.size.y-10)), "Select", "onPlanSelectedPressed")
     cancelButton = shipSelectionWindow:createButton(Rect(vec2(110, shipSelectionWindow.size.y-50), vec2(190, shipSelectionWindow.size.y-10)), "Unselect", "onDesignCancelPressed")
 
-    selection = shipSelectionWindow:createSelection(Rect(vec2(10, 10), vec2(shipSelectionWindow.size.x/2, shipSelectionWindow.size.y - 100)), 5)
-    selection.tooltip = "Ein Teststring"
-    selection.dropIntoEnabled = false
-    selection.dragFromEnabled = false
-    selection.entriesSelectable = true
-    selection.onSelectedFunction = "onDesignSelected"
-    selection.padding = 4
+    planSelection = shipSelectionWindow:createSavedDesignsSelection(Rect(vec2(10, 10), vec2(shipSelectionWindow.size.x/2, shipSelectionWindow.size.y - 100)), 5)
+    planSelection.dropIntoSelfEnabled = false
+    planSelection.dropIntoEnabled = false
+    planSelection.dragFromEnabled = false
+    planSelection.entriesSelectable = true
+    planSelection.onSelectedFunction = "onDesignSelected"
+    planSelection.padding = 4
 
     selectionPlandisplayer = shipSelectionWindow:createPlanDisplayer(Rect(vec2(shipSelectionWindow.size.x/2, 0), vec2(shipSelectionWindow.size.x, shipSelectionWindow.size.y - 100)))
 
@@ -354,9 +354,9 @@ function Shipyard.updatePlan()
 
     preview:scale(vec3(scale, scale, scale))
 
-
-    if selection.selected and selection.selected.plan then
-        preview = selection.selected.plan
+    local planItem = planSelection.selected
+    if planItem and planItem.plan and planItem.type == SavedDesignType.CraftDesign then
+        preview = planItem.plan
     end
 
     -- set to display
@@ -499,28 +499,17 @@ end
 
 function Shipyard.onDesignButtonPress()
     shipSelectionWindow.visible = 1
-    local playerships = {getSavedShips()}
-    local workshopShips = {getWorkshopShips()}
-
-    for _, ship in ipairs(playerships) do
-        if string.sub(ship, -4) == ".xml" then  -- in 1.8.1 getSavedShips() also returns the .png.and .meta which result in invalid items
-            local item = CraftDesignSelectionItem(ship)
-            selection:add(item)
-        end
-    end
-
-    for _, ship in ipairs(workshopShips) do
-        if string.sub(ship, -16) ~= "turretdesign.xml" then
-            local item = CraftDesignSelectionItem(ship)
-            selection:add(item)
-        end
-    end
+    planSelection:refreshTopLevelFolder()
 end
 
 function Shipyard.onDesignSelected()
-    local planItem = selection.selected
+    local planItem = planSelection.selected
     if not planItem then
         displayChatMessage("You have no plan selected."%_t, "Fighter Factory"%_t, 1)
+        return
+    end
+    if planItem.type ~= SavedDesignType.CraftDesign then
+        displayChatMessage("You may only select ship blueprints."%_t, "Fighter Factory"%_t, 1)
         return
     end
 
@@ -532,7 +521,7 @@ end
 
 function Shipyard.onDesignCancelPressed()
     shipSelectionWindow.visible = 0
-    selection:unselect()
+    planSelection:unselect()
     Shipyard.updatePlan()
 end
 
@@ -562,8 +551,9 @@ function Shipyard.onBuildButtonPress()
     local captain = captainCheckBox.checked
     local seed = seedTextBox.text
 
-    if selection.selected and selection.selected.plan then
-        invokeServerFunction("startServerJob", nil, founder, insurance, captain, nil, nil, nil, scale, nil, name, selection.selected.plan)
+    local planItem = planSelection.selected
+    if planItem and planItem.plan and planItem.type == SavedDesignType.CraftDesign then
+        invokeServerFunction("startServerJob", nil, founder, insurance, captain, nil, nil, nil, scale, nil, name, planItem.plan)
     else
         invokeServerFunction("startServerJob", singleBlock, founder, insurance, captain, styleName, seed, volume, scale, material, name)
     end
