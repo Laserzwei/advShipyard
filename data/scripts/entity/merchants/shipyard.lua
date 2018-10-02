@@ -182,7 +182,7 @@ function Shipyard.initUI()
     statsCheckBox.checked = false
 
     -- button at the bottom
-    local button = container:createButton(Rect(), "Build"%_t, "onBuildButtonPress");
+    local button = container:createButton(Rect(), "Build /*Shipyard Button*/"%_t, "onBuildButtonPress");
     local organizer = UIOrganizer(left)
     organizer.padding = 10
     organizer.margin = 10
@@ -532,11 +532,19 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
     local plan = BlockPlan()
 
     if singleBlock then
+        if anynils(material) then return end
+
         plan:addBlock(vec3(0, 0, 0), vec3(2, 2, 2), -1, -1, ColorRGB(1, 1, 1), Material(material), Matrix(), BlockType.Hull)
     else
+        if anynils(styleName, seed, volume) then return end
+
         local style = stationFaction:getShipStyle(styleName)
+        if not style then return end
+
         plan = GeneratePlanFromStyle(style, Seed(seed), volume, 2000, 1, Material(material))
     end
+
+    if anynils(scale, name) then return end
 
     plan:scale(vec3(scale, scale, scale))
 
