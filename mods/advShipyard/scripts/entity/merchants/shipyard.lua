@@ -506,11 +506,11 @@ end
 function Shipyard.onDesignSelected()
     local planItem = planSelection.selected
     if not planItem then
-        displayChatMessage("You have no plan selected."%_t, "Fighter Factory"%_t, 1)
+        displayChatMessage("You have no plan selected."%_t, "Shipyard"%_t, 1)
         return
     end
     if planItem.type ~= SavedDesignType.CraftDesign then
-        displayChatMessage("You may only select ship blueprints."%_t, "Fighter Factory"%_t, 1)
+        displayChatMessage("You may only select ship blueprints."%_t, "Shipyard"%_t, 1)
         return
     end
 
