@@ -7,6 +7,7 @@ require ("stationextensions")
 require ("randomext")
 require ("stringutility")
 require ("merchantutility")
+require ("callable")
 local Dialog = require("dialogutility")
 
 local config = require ("mods.advShipyard.config.advshipyard")
@@ -727,6 +728,7 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
         broadcastInvokeClientFunction("addClientJob", 0, requiredTime, name)
     end
 end
+callable(Shipyard, "startServerJob")
 
 function Shipyard.createShip(buyer, singleBlock, founder, insurance, captain, styleName, seed, volume, scale, material, name, uuid)
 
@@ -788,8 +790,6 @@ function Shipyard.createShip(buyer, singleBlock, founder, insurance, captain, st
         ship:invokeFunction("data/scripts/entity/insurance.lua", "internalInsure")
     end
 
-    ship:addScriptOnce("mods/advShipyard/scripts/entity/rename.lua", name)
-    ship:invokeFunction("mods/advShipyard/scripts/entity/rename.lua", "setName", name)
     if captain then
         -- add base crew
         local crew = ship.minCrew
@@ -818,6 +818,7 @@ function Shipyard.sendCraftStyles()
     end
 
 end
+callable(Shipyard, "sendCraftStyles")
 
 function Shipyard.restore(data)
     runningJobs = data

@@ -7,6 +7,7 @@ require ("stationextensions")
 require ("randomext")
 require ("stringutility")
 require ("merchantutility")
+require ("callable")
 local Dialog = require("dialogutility")
 
 -- Don't remove or alter the following comment, it tells the game the namespace this script lives in. If you remove it, the script will break.
@@ -617,6 +618,7 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
     -- this sends an ack to the client and makes it close the window
     invokeClientFunction(player, "transactionComplete")
 end
+callable(Shipyard, "startServerJob")
 
 function Shipyard.createShip(buyer, singleBlock, founder, insurance, captain, styleName, seed, volume, scale, material, name)
 
@@ -703,6 +705,7 @@ function Shipyard.sendCraftStyles()
     end
 
 end
+callable(Shipyard, "sendCraftStyles")
 
 function Shipyard.restore(data)
     runningJobs = data
