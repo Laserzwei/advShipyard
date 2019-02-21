@@ -22,7 +22,7 @@ local planDisplayer
 local singleBlockCheckBox
 local stationFounderCheckBox
 local insuranceCheckBox
-local captainCheckBox
+local captainCombo
 local styleCombo
 local seedTextBox
 local nameTextBox
@@ -127,12 +127,15 @@ function Shipyard.initUI()
     lister:placeElementCenter(insuranceCheckBox)
     insuranceCheckBox.tooltip = "The ship will be insured and you will receive a loss payment if it gets destroyed."%_t
 
-    captainCheckBox = container:createCheckBox(Rect(), "Crew + Captain"%_t, "")
-    lister:placeElementCenter(captainCheckBox)
-    captainCheckBox.tooltip = "Hire the crew for the ship as well."%_t
+    captainCombo = container:createComboBox(Rect(), "")
+    lister:placeElementCenter(captainCombo)
+    captainCombo.tooltip = "Hire the crew for the ship as well."%_t
+    captainCombo:addEntry("Empty Ship")
+    captainCombo:addEntry("Add Crew")
+    captainCombo:addEntry("Crew + Captain")
 
+    captainCombo.selectedIndex = 1
     insuranceCheckBox.checked = true
-    captainCheckBox.checked = true
 
     styleCombo = container:createComboBox(Rect(), "onStyleComboSelect");
     lister:placeElementCenter(styleCombo)
@@ -261,8 +264,8 @@ function Shipyard.renderUI()
 
     -- crew
     local crewMoney = 0
-    if captainCheckBox.checked then
-        crewMoney = Shipyard.getCrewMoney(preview)
+    if captainCombo.selectedIndex > 0 then
+        crewMoney = Shipyard.getCrewMoney(preview, captainCombo.selectedIndex == 2)
     end
 
     -- plan resources
@@ -328,17 +331,21 @@ function Shipyard.getInsuranceMoney(plan)
     return math.floor(insuranceMoney * 0.3);
 end
 
-function Shipyard.getCrewMoney(plan)
+function Shipyard.getCrewMoney(plan, withCaptain)
     local crewMoney = 0
 
     local crew = Crew():buildMinimumCrew(plan)
     crew.maxSize = crew.maxSize + 1
-    crew:add(1, CrewMan(CrewProfessionType.Captain, true, 1))
 
-    for p, amount in pairs(crew:getMembers()) do
-        local profession = CrewProfession(p)
-        crewMoney = crewMoney + profession.price * amount
+    if withCaptain then
+        crew:add(1, CrewMan(CrewProfessionType.Captain, true, 1))
     end
+
+    for crewman, amount in pairs(crew:getMembers()) do
+        crewMoney = crewMoney + crewman.profession.price * amount
+    end
+
+    crewMoney = crewMoney * 1.5
 
     return crewMoney
 end
@@ -470,7 +477,7 @@ function Shipyard.onBuildButtonPress()
     local singleBlock = singleBlockCheckBox.checked
     local founder = stationFounderCheckBox.checked
     local insurance = insuranceCheckBox.checked
-    local captain = captainCheckBox.checked
+    local captain = captainCombo.selectedIndex
     local seed = seedTextBox.text
 
     invokeServerFunction("startServerJob", singleBlock, founder, insurance, captain, styleName, seed, volume, scale, material, name)
@@ -557,8 +564,8 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
         requiredMoney = requiredMoney + Shipyard.getInsuranceMoney(plan)
     end
 
-    if captain then
-        requiredMoney = requiredMoney + Shipyard.getCrewMoney(plan)
+    if captain > 0 then
+        requiredMoney = requiredMoney + Shipyard.getCrewMoney(plan, captain == 2)
     end
 
     -- check if the player has enough money & resources
@@ -587,6 +594,10 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
 
     -- start the job
     local requiredTime = math.floor(20.0 + plan.durability / 100.0)
+
+    if captain > 0 then
+        requiredTime = requiredTime + 300
+    end
 
     if buyer.infiniteResources then
         requiredTime = 1.0
@@ -676,10 +687,13 @@ function Shipyard.createShip(buyer, singleBlock, founder, insurance, captain, st
         ship:invokeFunction("data/scripts/entity/insurance.lua", "internalInsure")
     end
 
-    if captain then
+    if captain > 0 then
         -- add base crew
         local crew = ship.minCrew
-        crew:add(1, CrewMan(CrewProfessionType.Captain, true, 1))
+
+        if captain == 2 then
+            crew:add(1, CrewMan(CrewProfessionType.Captain, true, 1))
+        end
 
         ship.crew = crew
     end

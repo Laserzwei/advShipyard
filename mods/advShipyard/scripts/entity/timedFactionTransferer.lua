@@ -2,7 +2,6 @@
 -- Don't remove or alter the following comment, it tells the game the namespace this script lives in. If you remove it, the script will break.
 -- namespace tFT
 tFT = {}
-local timePassed
 
 function tFT.initialize()
 
@@ -22,27 +21,41 @@ function tFT.getUpdateInterval()
 end
 
 function tFT.update(timestep)
-    local timePassed = Entity():getValue("timePassed") + timestep
-    local duration = Entity():getValue("duration") or math.huge
-    if onServer() then Entity():setValue("timePassed", timePassed) end
+    local ship = Entity()
+    local timePassed = ship:getValue("timePassed") + timestep
+    local duration = ship:getValue("duration") or math.huge
+    if onServer() then ship:setValue("timePassed", timePassed) end
 
     if timePassed >= duration then
-        local owner = Entity():getValue("buyer")
+        local owner = ship:getValue("buyer")
         if owner then
             if onServer() then
-                Entity().name = Entity():getValue("name")
-                Entity().invincible = false
+                ship.name = ship:getValue("name")
+                ship.invincible = false
+                local captain = ship:getValue("captain")
+                ship.crew = Crew()
+                if captain and captain > 0 then
+                    -- add base crew
+                    local crew = ship.minCrew
 
-                Entity():setValue("timePassed", nil)
-                Entity():setValue("duration", nil)
-                Entity():setValue("name", nil)
-                Entity():setValue("buyer", nil)
-                Faction(owner):sendChatMessage("Shipyard", ChatMessageType.Normal, "Your ship: "..(Entity().name or "(unnamed)").." has finished")
+                    if captain == 2 then
+                        crew:add(1, CrewMan(CrewProfessionType.Captain, true, 1))
+                    end
+
+                    ship.crew = crew
+                end
+
+                ship:setValue("timePassed", nil)
+                ship:setValue("duration", nil)
+                ship:setValue("name", nil)
+                ship:setValue("buyer", nil)
+                ship:setValue("captain", nil)
+                Faction(owner):sendChatMessage("Shipyard", ChatMessageType.Normal, "Your ship: "..(ship.name or "(unnamed)").." has finished")
             end
-            Entity().factionIndex =  owner
+            ship.factionIndex =  owner
             terminate()
         else
-            print("[advShipyard]  No owner found:", Entity().index.string, Sector():getCoordinates())
+            print("[advShipyard]  No owner found:", ship.index.string, Sector():getCoordinates())
         end
     end
 

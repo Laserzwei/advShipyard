@@ -25,7 +25,7 @@ local planDisplayer
 local singleBlockCheckBox
 local stationFounderCheckBox
 local insuranceCheckBox
-local captainCheckBox
+local captainCombo
 local styleCombo
 local seedTextBox
 local nameTextBox
@@ -35,8 +35,6 @@ local scaleSlider
 local selectShipDesignButton
 
 --ship selectionwindow
-local selectDesignButton
-local cancelButton
 local planSelection
 local selectionPlandisplayer
 
@@ -60,9 +58,6 @@ function Shipyard.initialize()
         station.title = "Shipyard"%_t
 
         if onServer() then
-            local x, y = Sector():getCoordinates()
-            local seed = Server().seed
-
             math.randomseed(Sector().seed + Sector().numEntities)
             addConstructionScaffold(station)
             math.randomseed(appTimeMs())
@@ -86,7 +81,7 @@ end
 
 -- if this function returns false, the script will not be listed in the interaction window,
 -- even though its UI may be registered
-function Shipyard.interactionPossible(playerIndex, option)
+function Shipyard.interactionPossible(playerIndex)
     return CheckFactionInteraction(playerIndex, -10000)
 end
 
@@ -138,12 +133,15 @@ function Shipyard.initUI()
     lister:placeElementCenter(insuranceCheckBox)
     insuranceCheckBox.tooltip = "The ship will be insured and you will receive a loss payment if it gets destroyed."%_t
 
-    captainCheckBox = container:createCheckBox(Rect(), "Crew + Captain"%_t, "")
-    lister:placeElementCenter(captainCheckBox)
-    captainCheckBox.tooltip = "Hire the crew for the ship as well."%_t
+    captainCombo = container:createComboBox(Rect(), "")
+    lister:placeElementCenter(captainCombo)
+    captainCombo.tooltip = "Hire the crew for the ship as well."%_t
+    captainCombo:addEntry("Empty Ship")
+    captainCombo:addEntry("Add Crew")
+    captainCombo:addEntry("Crew + Captain")
 
+    captainCombo.selectedIndex = 1
     insuranceCheckBox.checked = true
-    captainCheckBox.checked = true
 
     styleCombo = container:createComboBox(Rect(), "onStyleComboSelect");
     lister:placeElementCenter(styleCombo)
@@ -161,7 +159,7 @@ function Shipyard.initUI()
 
     container:createButton(split.right, "-", "seedDecrease");
 
-    local split = UIVerticalSplitter(split.left, 10, 0, 0.5)
+    split = UIVerticalSplitter(split.left, 10, 0, 0.5)
     split:setRightQuadratic();
 
     container:createButton(split.right, "+", "seedIncrease");
@@ -177,7 +175,7 @@ function Shipyard.initUI()
     lister:placeElementCenter(materialCombo)
 
     -- text field for the name
-    local l = container:createLabel(vec2(), "Name"%_t, 14);
+    l = container:createLabel(vec2(), "Name"%_t, 14);
     l.size = vec2(0, 0)
     lister.padding = 0
     lister:placeElementCenter(l)
@@ -203,7 +201,7 @@ function Shipyard.initUI()
     local organizer = UIOrganizer(left)
     organizer.padding = 10
     organizer.margin = 10
-    organizer.marginBottom = 50
+    organizer.marginBottom = 30
     organizer:placeElementBottom(button)
 
     -- create the viewer
@@ -239,19 +237,6 @@ end
 function Shipyard.onShowWindow()
     Shipyard.updatePlan()
 end
-
----- this function gets called every time the window is closed on the client
---function onCloseWindow()
---
---end
-
---function updateClient(timeStep)
---
---end
-
---function updateServer(timeStep)
---
---end
 
 function Shipyard.renderUIIndicator(px, py, size)
 
@@ -295,15 +280,16 @@ function Shipyard.renderUI()
     if insuranceCheckBox.checked then
         insuranceMoney = Shipyard.getInsuranceMoney(preview)
     end
-
+    local timeToConstruct = math.floor(20.0 + preview.durability / 100.0)
     -- crew
     local crewMoney = 0
-    if captainCheckBox.checked then
-        crewMoney = Shipyard.getCrewMoney(preview)
+    if captainCombo.selectedIndex > 0 then
+        crewMoney = Shipyard.getCrewMoney(preview, captainCombo.selectedIndex == 2)
+        timeToConstruct = timeToConstruct + 300
     end
 
     -- plan resources
-    for i, v in pairs(planResources) do
+    for _, v in pairs(planResources) do
         table.insert(planResourcesTotal, v)
     end
 
@@ -315,7 +301,7 @@ function Shipyard.renderUI()
         offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Fee"%_t, planMoney * fee, planResourcesFee)
         offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Total"%_t, planMoney + planMoney * fee + crewMoney + insuranceMoney, planResourcesTotal)
         local x, y = planDisplayer.lower.x +10, planDisplayer.lower.y + offset
-        drawText("Time to construct: \n"..createReadableTimeString(math.floor(20.0 + preview.durability / 100.0)), x, y, ColorRGB(1, 1, 1), 13, 0, 0, 2)
+        drawText("Time to construct: \n"..createReadableTimeString(timeToConstruct), x, y, ColorRGB(1, 1, 1), 13, 0, 0, 2)
     end
 end
 
@@ -334,7 +320,7 @@ function Shipyard.updatePlan()
     scale = scaleSlider.value;
     if scale <= 0.1 then scale = 0.1 end
 
-    local seed = seedTextBox.text
+    seed = seedTextBox.text
 
     if singleBlockCheckBox.checked then
         preview = BlockPlan()
@@ -374,19 +360,23 @@ function Shipyard.getInsuranceMoney(plan)
     return math.floor(insuranceMoney * 0.3);
 end
 
-function Shipyard.getCrewMoney(plan)
+function Shipyard.getCrewMoney(plan, withCaptain)
     local crewMoney = 0
 
     local crew = Crew():buildMinimumCrew(plan)
-    --crew.maxSize = crew.maxSize + 1
-    --crew:add(1, CrewMan(CrewProfessionType.Captain, true, 1)) -- don't ask me why the price of the captain is not properly added, but oh well
+    crew.maxSize = crew.maxSize + 1
 
-    for p, amount in pairs(crew:getMembers()) do
-        local profession = CrewProfession(p)
-        crewMoney = crewMoney + profession.price * amount
+    if withCaptain then
+        crew:add(1, CrewMan(CrewProfessionType.Captain, true, 1))
     end
 
-    return crewMoney + CrewProfession(CrewProfessionType.Captain).price
+    for crewman, amount in pairs(crew:getMembers()) do
+        crewMoney = crewMoney + crewman.profession.price * amount
+    end
+
+    crewMoney = crewMoney * 1.5
+
+    return crewMoney
 end
 
 function Shipyard.getRequiredMoney(plan, orderingFaction)
@@ -441,7 +431,7 @@ function Shipyard.receiveStyles(styles_received)
 
     styles = styles_received
 
-    for name, style in pairsByKeys(styles) do
+    for name, _ in pairsByKeys(styles) do
         styleCombo:addEntry(name)
     end
 
@@ -492,7 +482,7 @@ function Shipyard.onMaterialComboSelect()
     Shipyard.updatePlan();
 end
 
-function Shipyard.onStatsChecked(index, checked)
+function Shipyard.onStatsChecked(_, checked)
     if planDisplayer then
         planDisplayer.showStats = checked
     end
@@ -549,7 +539,7 @@ function Shipyard.onBuildButtonPress()
     local singleBlock = singleBlockCheckBox.checked
     local founder = stationFounderCheckBox.checked
     local insurance = insuranceCheckBox.checked
-    local captain = captainCheckBox.checked
+    local captain = captainCombo.selectedIndex
     local seed = seedTextBox.text
 
     local planItem = planSelection.selected
@@ -639,8 +629,8 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
         requiredMoney = requiredMoney + Shipyard.getInsuranceMoney(plan)
     end
 
-    if captain then
-        requiredMoney = requiredMoney + Shipyard.getCrewMoney(plan)
+    if captain > 0 then
+        requiredMoney = requiredMoney + Shipyard.getCrewMoney(plan, captain == 2)
     end
 
 
@@ -653,7 +643,7 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
         return
     end
 
-    for i,name in ipairs(namesList) do
+    for _,name in ipairs(namesList) do
         -- check if the player has enough money & resources
         local canPay, msg, args = buyer:canPay(requiredMoney, unpack(requiredResources))
         if not canPay then -- if there was an error, print it
@@ -668,7 +658,7 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
 
         -- relations of the player to the faction owning the shipyard get better
         local relationsChange = GetRelationChangeFromMoney(requiredMoney)
-        for i, v in pairs(requiredResources) do
+        for _, v in pairs(requiredResources) do
             relationsChange = relationsChange + v / 4
         end
 
@@ -680,6 +670,10 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
 
         -- start the job
         local requiredTime = math.floor(20.0 + plan.durability / 100.0)
+
+        if captain > 0 then
+            requiredTime = requiredTime + 300
+        end
 
         if buyer.infiniteResources then
             requiredTime = 1.0
@@ -715,6 +709,7 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
             ship:setValue("duration", requiredTime)
             ship:setValue("name", name)
             ship:setValue("buyer", buyer.index)
+            ship:setValue("captain", captain)
 
             ship:addScriptOnce("mods/advShipyard/scripts/entity/timedFactionTransferer.lua")
             job.uuid = ship.index.string
@@ -790,10 +785,13 @@ function Shipyard.createShip(buyer, singleBlock, founder, insurance, captain, st
         ship:invokeFunction("data/scripts/entity/insurance.lua", "internalInsure")
     end
 
-    if captain then
+    if captain > 0 then
         -- add base crew
         local crew = ship.minCrew
-        crew:add(1, CrewMan(CrewProfessionType.Captain, true, 1))
+
+        if captain == 2 then
+            crew:add(1, CrewMan(CrewProfessionType.Captain, true, 1))
+        end
 
         ship.crew = crew
     end
@@ -807,7 +805,7 @@ function Shipyard.sendCraftStyles()
     local styleNames = {faction:getShipStyleNames()}
     local styles = {}
 
-    for i, name in pairs(styleNames) do
+    for _, name in pairs(styleNames) do
         styles[name] = faction:getShipStyle(name)
     end
 
