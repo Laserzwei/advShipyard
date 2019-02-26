@@ -8,6 +8,7 @@ require ("randomext")
 require ("stringutility")
 require ("merchantutility")
 require ("callable")
+local ShipFounding = require ("shipfounding")
 local Dialog = require("dialogutility")
 
 -- Don't remove or alter the following comment, it tells the game the namespace this script lives in. If you remove it, the script will break.
@@ -130,9 +131,9 @@ function Shipyard.initUI()
     captainCombo = container:createComboBox(Rect(), "")
     lister:placeElementCenter(captainCombo)
     captainCombo.tooltip = "Hire the crew for the ship as well."%_t
-    captainCombo:addEntry("Empty Ship")
-    captainCombo:addEntry("Add Crew")
-    captainCombo:addEntry("Crew + Captain")
+    captainCombo:addEntry("Empty Ship"%_t)
+    captainCombo:addEntry("Add Crew"%_t)
+    captainCombo:addEntry("Crew + Captain"%_t)
 
     captainCombo.selectedIndex = 1
     insuranceCheckBox.checked = true
@@ -248,13 +249,23 @@ end
 
 function Shipyard.renderUI()
 
-    local fee = GetFee(Faction(), Player()) * 2
+    local ship = Player().craft
+    local buyer = Faction(ship.factionIndex)
+    if buyer.isAlliance then
+        buyer = Alliance(buyer.index)
+    elseif buyer.isPlayer then
+        buyer = Player(buyer.index)
+    end
+
+    local fee = GetFee(Faction(), buyer) * 2
 
     local planMoney = preview:getMoneyValue()
 
     local planResources = {preview:getResourceValue()}
     local planResourcesFee = {}
     local planResourcesTotal = {}
+
+    local foundingFee, foundingResources = ShipFounding.getNextShipCosts(buyer)
 
     -- insurance
     local insuranceMoney = 0
@@ -273,12 +284,20 @@ function Shipyard.renderUI()
         table.insert(planResourcesTotal, v)
     end
 
+    -- founding resources
+    for i, amount in pairs(foundingResources) do
+        planResourcesTotal[i] = planResourcesTotal[i] + amount
+    end
+
     local offset = 10
+    offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Founding Costs"%_t, foundingFee, foundingResources)
     offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Ship Costs"%_t, planMoney, planResources)
     offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Insurance"%_t, insuranceMoney)
     offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Crew"%_t, crewMoney)
     offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Fee"%_t, planMoney * fee, planResourcesFee)
-    offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Total"%_t, planMoney + planMoney * fee + crewMoney + insuranceMoney, planResourcesTotal)
+
+    offset = offset + 20
+    offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Total"%_t, foundingFee + planMoney + planMoney * fee + crewMoney + insuranceMoney, planResourcesTotal)
 end
 
 function Shipyard.updatePlan()
@@ -352,7 +371,9 @@ end
 
 function Shipyard.getRequiredMoney(plan, orderingFaction)
     local requiredMoney = plan:getMoneyValue();
-    requiredMoney = requiredMoney
+
+    local foundingFee, foundingResources = ShipFounding.getNextShipCosts(orderingFaction)
+    requiredMoney = requiredMoney + foundingFee
 
     local fee = GetFee(Faction(), orderingFaction) * 2
     fee = requiredMoney * fee
@@ -362,7 +383,15 @@ function Shipyard.getRequiredMoney(plan, orderingFaction)
 end
 
 function Shipyard.getRequiredResources(plan, orderingFaction)
-    return {plan:getResourceValue()}
+
+    local resources = {plan:getResourceValue()}
+    local foundingFee, foundingResources = ShipFounding.getNextShipCosts(orderingFaction)
+
+    for i = 1, NumMaterials() do
+        resources[i] = (resources[i] or 0) + foundingResources[i]
+end
+
+    return resources
 end
 
 function Shipyard.getRequiredMoneyTest(styleName, seed, volume, material, scale)
@@ -525,13 +554,13 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
 
     -- shipyard may only have x jobs
     if tablelength(runningJobs) >= 2 then
-        player:sendChatMessage(station.title, 1, "The shipyard is already at maximum capacity."%_t)
+        player:sendChatMessage(station, 1, "The shipyard is already at maximum capacity."%_t)
         return 1
     end
 
     local settings = GameSettings()
     if settings.maximumPlayerShips > 0 and buyer.numShips >= settings.maximumPlayerShips then
-        player:sendChatMessage("Server"%_t, 1, "Maximum ship limit per faction (%s) of this server reached!"%_t, settings.maximumPlayerShips)
+        player:sendChatMessage("", 1, "Maximum ship limit per faction (%s) of this server reached!"%_t, settings.maximumPlayerShips)
         return
     end
 
@@ -565,13 +594,21 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
     end
 
     if captain > 0 then
+        if captain == 2 then
+            if stationFaction:getRelations(buyer.index) < 30000 then
+                local name = "Good"%_t
+                player:sendChatMessage(station.title, ChatMessageType.Error, "You need relations of at least '%s' to this faction to include a captain with the ship."%_t, name)
+                return
+            end
+        end
+
         requiredMoney = requiredMoney + Shipyard.getCrewMoney(plan, captain == 2)
     end
 
     -- check if the player has enough money & resources
     local canPay, msg, args = buyer:canPay(requiredMoney, unpack(requiredResources))
     if not canPay then -- if there was an error, print it
-        player:sendChatMessage(station.title, 1, msg, unpack(args))
+        player:sendChatMessage(station, 1, msg, unpack(args))
         return;
     end
 
@@ -621,7 +658,7 @@ function Shipyard.startServerJob(singleBlock, founder, insurance, captain, style
     table.insert(runningJobs, job)
 
     -- TODO: translation of time string
-    player:sendChatMessage(station.title, 0, "Thank you for your purchase. Your ship will be ready in about %s."%_t, createReadableTimeString(requiredTime))
+    player:sendChatMessage(station, 0, "Thank you for your purchase. Your ship will be ready in about %s."%_t, createReadableTimeString(requiredTime))
 
     -- tell all clients in the sector that production begins
     broadcastInvokeClientFunction("startClientJob", 0, requiredTime)
@@ -645,7 +682,7 @@ function Shipyard.createShip(buyer, singleBlock, founder, insurance, captain, st
     local settings = GameSettings()
     if settings.maximumPlayerShips > 0 and ownedShips >= settings.maximumPlayerShips then
         if player then
-            player:sendChatMessage("Server"%_t, 1, "Maximum ship limit per faction (%s) of this server reached!"%_t, settings.maximumPlayerShips)
+            player:sendChatMessage("", 1, "Maximum ship limit per faction (%s) of this server reached!"%_t, settings.maximumPlayerShips)
         end
         return
     end
