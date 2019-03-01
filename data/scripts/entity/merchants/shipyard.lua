@@ -250,6 +250,8 @@ end
 function Shipyard.renderUI()
 
     local ship = Player().craft
+    if not ship then return end
+
     local buyer = Faction(ship.factionIndex)
     if buyer.isAlliance then
         buyer = Alliance(buyer.index)
@@ -545,7 +547,6 @@ end
 -- ######################################     Server Sided     ############################################# --
 -- ######################################################################################################### --
 function Shipyard.startServerJob(singleBlock, founder, insurance, captain, styleName, seed, volume, scale, material, name)
-
     local buyer, ship, player = getInteractingFaction(callingPlayer, AlliancePrivilege.SpendResources, AlliancePrivilege.FoundShips)
     if not buyer then return end
 
@@ -669,6 +670,10 @@ end
 callable(Shipyard, "startServerJob")
 
 function Shipyard.createShip(buyer, singleBlock, founder, insurance, captain, styleName, seed, volume, scale, material, name)
+    -- compatibility with old saves
+    if type(captain) ~= "number" then
+        if captain then captain = 2 else captain = 0 end
+    end
 
     local ownedShips = 0
     local player
