@@ -3,7 +3,7 @@ config = {}
 config.Author = "Laserzwei"
 config.ModName = "Advanced Shipyard"
 config.version = {
-    major=1, minor=11, patch = 0,
+    major=1, minor=12, patch = 0,
     string = function()
         return  Config.version.major .. '.' ..
                 Config.version.minor .. '.' ..
