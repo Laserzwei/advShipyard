@@ -267,7 +267,7 @@ function Shipyard.renderUI()
     local planResourcesFee = {}
     local planResourcesTotal = {}
 
-    local foundingFee, foundingResources = ShipFounding.getNextShipCosts(buyer)
+    local foundingResources = ShipFounding.getNextShipCosts(buyer)
 
     -- insurance
     local insuranceMoney = 0
@@ -292,14 +292,14 @@ function Shipyard.renderUI()
     end
 
     local offset = 10
-    offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Founding Costs"%_t, foundingFee, foundingResources)
+    offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Founding Costs"%_t, 0, foundingResources)
     offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Ship Costs"%_t, planMoney, planResources)
     offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Insurance"%_t, insuranceMoney)
     offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Crew"%_t, crewMoney)
     offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Fee"%_t, planMoney * fee, planResourcesFee)
 
     offset = offset + 20
-    offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Total"%_t, foundingFee + planMoney + planMoney * fee + crewMoney + insuranceMoney, planResourcesTotal)
+    offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Total"%_t, planMoney + planMoney * fee + crewMoney + insuranceMoney, planResourcesTotal)
 end
 
 function Shipyard.updatePlan()
@@ -374,8 +374,8 @@ end
 function Shipyard.getRequiredMoney(plan, orderingFaction)
     local requiredMoney = plan:getMoneyValue();
 
-    local foundingFee, foundingResources = ShipFounding.getNextShipCosts(orderingFaction)
-    requiredMoney = requiredMoney + foundingFee
+    local foundingResources = ShipFounding.getNextShipCosts(orderingFaction)
+    requiredMoney = requiredMoney
 
     local fee = GetFee(Faction(), orderingFaction) * 2
     fee = requiredMoney * fee
@@ -387,7 +387,7 @@ end
 function Shipyard.getRequiredResources(plan, orderingFaction)
 
     local resources = {plan:getResourceValue()}
-    local foundingFee, foundingResources = ShipFounding.getNextShipCosts(orderingFaction)
+    local foundingResources = ShipFounding.getNextShipCosts(orderingFaction)
 
     for i = 1, NumMaterials() do
         resources[i] = (resources[i] or 0) + foundingResources[i]

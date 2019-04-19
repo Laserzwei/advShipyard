@@ -160,7 +160,7 @@ function Shipyard.initUI()
 
     container:createButton(split.right, "-", "seedDecrease");
 
-    split = UIVerticalSplitter(split.left, 10, 0, 0.5)
+    local split = UIVerticalSplitter(split.left, 10, 0, 0.5)
     split:setRightQuadratic();
 
     container:createButton(split.right, "+", "seedIncrease");
@@ -176,7 +176,7 @@ function Shipyard.initUI()
     lister:placeElementCenter(materialCombo)
 
     -- text field for the name
-    l = container:createLabel(vec2(), "Name"%_t, 14);
+    local l = container:createLabel(vec2(), "Name"%_t, 14);
     l.size = vec2(0, 0)
     lister.padding = 0
     lister:placeElementCenter(l)
@@ -286,7 +286,7 @@ function Shipyard.renderUI()
     local planResourcesFee = {}
     local planResourcesTotal = {}
 
-    local foundingFee, foundingResources = ShipFounding.getNextShipCosts(buyer)
+    local foundingResources = ShipFounding.getNextShipCosts(buyer)
 
     -- insurance
     local insuranceMoney = 0
@@ -313,14 +313,13 @@ function Shipyard.renderUI()
 
     local offset = 10
     if not shipSelectionWindow.visible then
-        offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Founding Costs"%_t, foundingFee, foundingResources)
         offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Ship Costs"%_t, planMoney, planResources)
         offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Insurance"%_t, insuranceMoney)
         offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Crew"%_t, crewMoney)
         offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Fee"%_t, planMoney * fee, planResourcesFee)
 
         offset = offset + 20
-        offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Total"%_t, foundingFee + planMoney + planMoney * fee + crewMoney + insuranceMoney, planResourcesTotal)
+        offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Total"%_t, planMoney + planMoney * fee + crewMoney + insuranceMoney, planResourcesTotal)
         local x, y = planDisplayer.lower.x +10, planDisplayer.lower.y + offset
         drawText("Time to construct: \n"..createReadableTimeString(timeToConstruct), x, y, ColorRGB(1, 1, 1), 13, 0, 0, 2)
     end
@@ -341,7 +340,7 @@ function Shipyard.updatePlan()
     scale = scaleSlider.value;
     if scale <= 0.1 then scale = 0.1 end
 
-    seed = seedTextBox.text
+    local seed = seedTextBox.text
 
     if singleBlockCheckBox.checked then
         preview = BlockPlan()
@@ -403,8 +402,8 @@ end
 function Shipyard.getRequiredMoney(plan, orderingFaction)
     local requiredMoney = plan:getMoneyValue();
 
-    local foundingFee, foundingResources = ShipFounding.getNextShipCosts(orderingFaction)
-    requiredMoney = requiredMoney + foundingFee
+    local foundingResources = ShipFounding.getNextShipCosts(orderingFaction)
+    requiredMoney = requiredMoney
 
     local fee = GetFee(Faction(), orderingFaction) * 2
     fee = requiredMoney * fee
@@ -416,7 +415,7 @@ end
 function Shipyard.getRequiredResources(plan, orderingFaction)
 
     local resources = {plan:getResourceValue()}
-    local foundingFee, foundingResources = ShipFounding.getNextShipCosts(orderingFaction)
+    local foundingResources = ShipFounding.getNextShipCosts(orderingFaction)
 
     for i = 1, NumMaterials() do
         resources[i] = (resources[i] or 0) + foundingResources[i]
