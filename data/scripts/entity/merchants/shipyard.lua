@@ -68,7 +68,7 @@ function Shipyard.renderUI()
     local planResourcesFee = {}
     local planResourcesTotal = {}
 
-    local foundingFee, foundingResources = Shipyard.getExtendedFoundingCosts(buyer)
+    local foundingResources = Shipyard.getExtendedFoundingCosts(buyer)
 
     -- insurance
     local insuranceMoney = 0
@@ -95,14 +95,14 @@ function Shipyard.renderUI()
 
     local offset = 10
     if not shipSelectionWindow.visible then
-        offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Founding Costs"%_t, foundingFee, foundingResources)
+        offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Founding Costs"%_t, 0, foundingResources)
         offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Ship Costs"%_t, planMoney, planResources)
         offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Insurance"%_t, insuranceMoney)
         offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Crew"%_t, crewMoney)
         offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Fee"%_t, planMoney * fee, planResourcesFee)
 
         offset = offset + 20
-        offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Total"%_t, foundingFee + planMoney + planMoney * fee + crewMoney + insuranceMoney, planResourcesTotal)
+        offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Total"%_t, planMoney + planMoney * fee + crewMoney + insuranceMoney, planResourcesTotal)
         local x, y = planDisplayer.lower.x +10, planDisplayer.lower.y + offset
         drawText("Time to construct:"%_t.."\n"..createReadableTimeString(timeToConstruct), x, y, ColorRGB(1, 1, 1), 13, 0, 0, 2)
     end
@@ -217,8 +217,8 @@ local advSY_oldGetRequiredMoney = Shipyard.getRequiredMoney
 function Shipyard.getRequiredMoney(plan, orderingFaction)
     local requiredMoney = plan:getMoneyValue();
 
-    local foundingFee, foundingResources = Shipyard.getExtendedFoundingCosts(orderingFaction)
-    requiredMoney = requiredMoney + foundingFee
+    local foundingResources = Shipyard.getExtendedFoundingCosts(orderingFaction)
+    requiredMoney = requiredMoney
 
     local fee = GetFee(Faction(), orderingFaction) * 2
     fee = requiredMoney * fee
@@ -231,7 +231,7 @@ local advSY_oldGetRequiredResources = Shipyard.getRequiredResources
 function Shipyard.getRequiredResources(plan, orderingFaction)
 
     local resources = {plan:getResourceValue()}
-    local foundingFee, foundingResources = Shipyard.getExtendedFoundingCosts(orderingFaction)
+    local foundingResources = Shipyard.getExtendedFoundingCosts(orderingFaction)
 
     for i = 1, NumMaterials() do
         resources[i] = (resources[i] or 0) + foundingResources[i]
