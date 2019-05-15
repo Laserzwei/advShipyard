@@ -428,4 +428,13 @@ function Shipyard.createShip(buyer, singleBlock, founder, insurance, captain, st
 
         ship.crew = crew
     end
+
+    if GameSettings().difficulty < Difficulty.Hard then
+        local token = createReconstructionToken(ship)
+
+        if GameSettings().difficulty <= Difficulty.Easy then
+            buyer:getInventory():add(token, true)
+        end
+        buyer:getInventory():add(token, true)
+    end
 end
