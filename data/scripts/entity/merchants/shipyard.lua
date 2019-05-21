@@ -70,11 +70,6 @@ function Shipyard.renderUI()
 
     local foundingResources = Shipyard.getExtendedFoundingCosts(buyer)
 
-    -- insurance
-    local insuranceMoney = 0
-    if insuranceCheckBox.checked then
-        insuranceMoney = Shipyard.getInsuranceMoney(preview)
-    end
     local timeToConstruct = math.floor(20.0 + preview.durability / 100.0)
     -- crew
     local crewMoney = 0
@@ -97,12 +92,11 @@ function Shipyard.renderUI()
     if not shipSelectionWindow.visible then
         offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Founding Costs"%_t, 0, foundingResources)
         offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Ship Costs"%_t, planMoney, planResources)
-        offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Insurance"%_t, insuranceMoney)
         offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Crew"%_t, crewMoney)
         offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Fee"%_t, planMoney * fee, planResourcesFee)
 
         offset = offset + 20
-        offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Total"%_t, planMoney + planMoney * fee + crewMoney + insuranceMoney, planResourcesTotal)
+        offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Total"%_t, planMoney + planMoney * fee + crewMoney , planResourcesTotal)
         local x, y = planDisplayer.lower.x +10, planDisplayer.lower.y + offset
         drawText("Time to construct:"%_t.."\n"..createReadableTimeString(timeToConstruct), x, y, ColorRGB(1, 1, 1), 13, 0, 0, 2)
     end
@@ -182,15 +176,14 @@ function Shipyard.onBuildButtonPress()
 
     local singleBlock = singleBlockCheckBox.checked
     local founder = stationFounderCheckBox.checked
-    local insurance = insuranceCheckBox.checked
     local captain = captainCombo.selectedIndex
     local seed = seedTextBox.text
 
     local planItem = planSelection.selected
     if planItem and planItem.plan and planItem.type == SavedDesignType.CraftDesign then
-        invokeServerFunction("startServerDesignJob", founder, insurance, captain, scale, name, planItem.plan)
+        invokeServerFunction("startServerDesignJob", founder, captain, scale, name, planItem.plan)
     else
-        invokeServerFunction("startServerJob", singleBlock, founder, insurance, captain, styleName, seed, volume, scale, material, name)
+        invokeServerFunction("startServerJob", singleBlock, founder, captain, styleName, seed, volume, scale, material, name)
     end
 
 end
@@ -256,7 +249,7 @@ function Shipyard.update(timeStep)
                 local owner = Faction(job.shipOwner)
 
                 if owner then
-                    Shipyard.createShip(owner, job.singleBlock, job.founder, job.insurance, job.captain, job.styleName, job.seed, job.volume, job.scale, job.material, job.shipName, job.uuid)
+                    Shipyard.createShip(owner, job.singleBlock, job.founder, job.captain, job.styleName, job.seed, job.volume, job.scale, job.material, job.shipName, job.uuid)
                 end
             end
             runningJobs[i] = nil
@@ -269,7 +262,7 @@ end
 -- ######################################     Server Sided     ############################################# --
 -- ######################################################################################################### --
 
-function Shipyard.startServerDesignJob(founder, insurance, captain, scale, name, planToBuild)
+function Shipyard.startServerDesignJob(founder, captain, scale, name, planToBuild)
     if not name then print("Not a valid shipname", name) return end
     local buyer, ship, player = getInteractingFaction(callingPlayer, AlliancePrivilege.SpendResources, AlliancePrivilege.FoundShips)
     if not buyer then return end
@@ -297,10 +290,6 @@ function Shipyard.startServerDesignJob(founder, insurance, captain, scale, name,
 
     local requiredMoney, fee = Shipyard.getRequiredMoney(plan, buyer)
     local requiredResources = Shipyard.getRequiredResources(plan, buyer)
-
-    if insurance then
-        requiredMoney = requiredMoney + Shipyard.getInsuranceMoney(plan)
-    end
 
     if captain > 0 then
         if captain == 2 then
@@ -352,7 +341,6 @@ function Shipyard.startServerDesignJob(founder, insurance, captain, scale, name,
     job.scale = scale
     job.shipName = name
     job.founder = founder
-    job.insurance = insurance
     job.captain = captain
     -- job.plan = seriLib.serializeBlockPlan(planToBuild)  << If only someone had made a full serialzation lib. Hint @1694550170
 
@@ -380,8 +368,8 @@ end
 callable(Shipyard, "startServerDesignJob")
 
 local advSY_oldCreateShip = Shipyard.createShip
-function Shipyard.createShip(buyer, singleBlock, founder, insurance, captain, styleName, seed, volume, scale, material, name, uuid)
-    if not uuid then advSY_oldCreateShip(buyer, singleBlock, founder, insurance, captain, styleName, seed, volume, scale, material, name) return end
+function Shipyard.createShip(buyer, singleBlock, founder, captain, styleName, seed, volume, scale, material, name, uuid)
+    if not uuid then advSY_oldCreateShip(buyer, singleBlock, founder, captain, styleName, seed, volume, scale, material, name) return end
 
     local ownedShips = 0
     if buyer.isAlliance then
@@ -411,11 +399,6 @@ function Shipyard.createShip(buyer, singleBlock, founder, insurance, captain, st
 
     if founder then
         ship:addScript("data/scripts/entity/stationfounder.lua")
-    end
-
-    if insurance then
-        ship:addScript("data/scripts/entity/insurance.lua")
-        ship:invokeFunction("data/scripts/entity/insurance.lua", "internalInsure")
     end
 
     if captain > 0 then
