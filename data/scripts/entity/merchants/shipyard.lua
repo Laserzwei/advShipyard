@@ -397,10 +397,7 @@ function Shipyard.createShip(buyer, singleBlock, founder, captain, styleName, se
     -- add base scripts
     AddDefaultShipScripts(ship)
     if GameVersion().minor >= 24 then
-        print(GameVersion().minor)
         SetBoardingDefenseLevel(ship)
-    else
-        print(GameVersion().minor)
     end
 
     if founder then
