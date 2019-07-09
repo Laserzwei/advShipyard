@@ -1,5 +1,6 @@
 function execute(sender, commandName, pIndex, ...)
-    Player(sender):addScriptOnce("mods/advShipyard/scripts/player/changeOwner.lua", pIndex)
+    local player = Player(sender)
+    player:addScriptOnce("data/scripts/player/changeOwner.lua", pIndex)
 
     return 0, "", ""
 end
