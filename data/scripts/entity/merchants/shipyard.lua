@@ -396,6 +396,9 @@ function Shipyard.createShip(buyer, singleBlock, founder, captain, styleName, se
 
     -- add base scripts
     AddDefaultShipScripts(ship)
+    if GameVersion().minor >= 24 then
+        SetBoardingDefenseLevel(ship)
+    end
 
     if founder then
         ship:addScript("data/scripts/entity/stationfounder.lua")
