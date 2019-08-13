@@ -392,7 +392,7 @@ function Shipyard.createShip(buyer, singleBlock, founder, captain, styleName, se
     local stationFaction = Faction()
 
     local ship = Entity(Uuid(uuid))
-    if not ship then print("skipping invalid ship:", name, "buyer:", buyer.name, "Sector:", sector():getCoordinates(), "uuid:", uuid) return end
+    if not ship then print("skipping invalid ship:", name, "buyer:", buyer.name, "Sector:", Sector():getCoordinates(), "uuid:", uuid) return end
 
     -- add base scripts
     AddDefaultShipScripts(ship)
