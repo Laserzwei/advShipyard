@@ -320,7 +320,12 @@ function Shipyard.startServerDesignJob(founder, captain, scale, name, planToBuil
     for _, v in pairs(requiredResources) do
         relationsChange = relationsChange + v / 4
     end
-    Galaxy():changeFactionRelations(buyer, stationFaction, relationsChange)
+    local version = GameVersion()
+    if version.major == 0 and version.minor >= 26 then
+        changeRelations(buyer, stationFaction, relationsChange, RelationChangeType.ServiceUsage)
+    else
+        Galaxy():changeFactionRelations(buyer, stationFaction, relationsChange)
+    end
 
     -- start the job
     local requiredTime = math.floor(20.0 + plan.durability / 100.0)
