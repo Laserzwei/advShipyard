@@ -1,5 +1,6 @@
 package.path = package.path .. ";data/scripts/lib/?.lua"
 include ("callable")
+include ("reconstructiontoken")
 -- Don't remove or alter the following comment, it tells the game the namespace this script lives in. If you remove it, the script will break.
 -- namespace tFT
 tFT = {}
@@ -65,9 +66,19 @@ function tFT.update(timestep)
 
                     ship.crew = crew
                 end
-                Faction(buyer):sendChatMessage("Shipyard", ChatMessageType.Normal, "Your ship: %s has finished production"%_t, (ship.name or "(unnamed)"%_t))
+                buyerFaction = Faction(buyer)
+                buyerFaction:sendChatMessage("Shipyard", ChatMessageType.Normal, "Your ship: %s has finished production"%_t, (ship.name or "(unnamed)"%_t))
                 ship.invincible = false
                 ship.factionIndex = buyer
+
+                if GameSettings().difficulty < Difficulty.Hard then
+                    local token = createReconstructionToken(ship)
+                    if GameSettings().difficulty <= Difficulty.Easy then
+                        buyerFaction:getInventory():add(token, true)
+                    end
+                    buyerFaction:getInventory():add(token, true)
+                end
+
                 terminate()
             else
                 print(string.format("[Advanced Shipyard Mod] No owner found for ship (-index): %s   in sector: (%i:%i)", ship.index.string, Sector():getCoordinates()))
