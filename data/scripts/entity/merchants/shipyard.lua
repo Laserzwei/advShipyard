@@ -320,12 +320,8 @@ function Shipyard.startServerDesignJob(founder, captain, scale, name, planToBuil
     for _, v in pairs(requiredResources) do
         relationsChange = relationsChange + v / 4
     end
-    local version = GameVersion()
-    if version.major == 0 and version.minor >= 26 then
-        changeRelations(buyer, stationFaction, relationsChange, RelationChangeType.ServiceUsage)
-    else
-        Galaxy():changeFactionRelations(buyer, stationFaction, relationsChange)
-    end
+
+    changeRelations(buyer, stationFaction, relationsChange, RelationChangeType.ServiceUsage)
 
     -- start the job
     local requiredTime = math.floor(20.0 + plan.durability / 100.0)
@@ -401,9 +397,7 @@ function Shipyard.createShip(buyer, singleBlock, founder, captain, styleName, se
 
     -- add base scripts
     AddDefaultShipScripts(ship)
-    if GameVersion().minor >= 24 then
-        SetBoardingDefenseLevel(ship)
-    end
+    SetBoardingDefenseLevel(ship)
 
     if founder then
         ship:addScript("data/scripts/entity/stationfounder.lua")

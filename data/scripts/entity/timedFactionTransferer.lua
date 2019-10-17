@@ -71,12 +71,23 @@ function tFT.update(timestep)
                 ship.invincible = false
                 ship.factionIndex = buyer
 
-                if GameSettings().difficulty < Difficulty.Hard then
-                    local token = createReconstructionToken(ship)
-                    if GameSettings().difficulty <= Difficulty.Easy then
+                local version = GameVersion()
+                if version.major == 0 and version.minor >= 27 then
+                    if GameSettings().difficulty < Difficulty.Hard then
+                        local token = createReconstructionToken(ship)
+                        if GameSettings().difficulty <= Difficulty.Easy then
+                            buyerFaction:getInventory():addOrDrop(token, true)
+                        end
                         buyerFaction:getInventory():addOrDrop(token, true)
                     end
-                    buyerFaction:getInventory():addOrDrop(token, true)
+                else
+                    if GameSettings().difficulty < Difficulty.Hard then
+                        local token = createReconstructionToken(ship)
+                        if GameSettings().difficulty <= Difficulty.Easy then
+                            buyerFaction:getInventory():add(token, true)
+                        end
+                        buyerFaction:getInventory():add(token, true)
+                    end
                 end
 
                 terminate()
