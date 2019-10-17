@@ -74,9 +74,9 @@ function tFT.update(timestep)
                 if GameSettings().difficulty < Difficulty.Hard then
                     local token = createReconstructionToken(ship)
                     if GameSettings().difficulty <= Difficulty.Easy then
-                        buyerFaction:getInventory():add(token, true)
+                        buyerFaction:getInventory():addOrDrop(token, true)
                     end
-                    buyerFaction:getInventory():add(token, true)
+                    buyerFaction:getInventory():addOrDrop(token, true)
                 end
 
                 terminate()
