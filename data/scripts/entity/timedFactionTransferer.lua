@@ -72,8 +72,8 @@ function tFT.update(timestep)
                 ship.factionIndex = buyer
 
                 local version = GameVersion()
-                if version.major == 0 and version.minor >= 27 then
-                    if GameSettings().difficulty < Difficulty.Hard then
+                if version.major == 0 and version.minor >= 29 then
+                    if GameSettings().difficulty < Difficulty.Veteran then
                         local token = createReconstructionToken(ship)
                         if GameSettings().difficulty <= Difficulty.Easy then
                             buyerFaction:getInventory():addOrDrop(token, true)
