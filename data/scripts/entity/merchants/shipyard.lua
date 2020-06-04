@@ -400,7 +400,7 @@ function Shipyard.createShip(buyer, singleBlock, founder, captain, styleName, se
     SetBoardingDefenseLevel(ship)
 
     if founder then
-        ship:addScript("data/scripts/entity/stationfounder.lua")
+        ship:addScript("data/scripts/entity/stationfounder.lua", stationFaction)
     end
 
     if captain > 0 then
