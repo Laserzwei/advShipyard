@@ -6,7 +6,7 @@ local shipSelectionWindow
 -- ship building menu items
 local selectShipDesignButton
 
---ship selectionwindow
+-- ship selectionwindow
 local planSelection
 local selectionPlandisplayer
 
@@ -20,21 +20,21 @@ function Shipyard.initUI()
     local res = getResolution()
     local size = vec2(800, 600)
     local vsplit = UIVerticalSplitter(Rect(vec2(0, 0), size), 10, 10, 0.5)
-    --custom designs
-    local rect = Rect(statsCheckBox.rect.lower + vec2(0,25), statsCheckBox.rect.upper + vec2(0,35))
-    selectShipDesignButton = window:createButton(Rect(), "Select Design"%_t, "onDesignButtonPress")
+    -- custom designs
+    local rect = Rect(statsCheckBox.rect.lower + vec2(0, 25), statsCheckBox.rect.upper + vec2(0, 35))
+    selectShipDesignButton = window:createButton(Rect(), "Select Design" % _t, "onDesignButtonPress")
     selectShipDesignButton.rect = rect
 
     shipSelectionWindow = menu:createWindow(Rect(res * 0.5 - size * 0.5, res * 0.5 + size * 0.5))
-    shipSelectionWindow.caption = "Select your Design"%_t
+    shipSelectionWindow.caption = "Select your Design" % _t
     shipSelectionWindow.showCloseButton = 1
     shipSelectionWindow.moveable = 1
     shipSelectionWindow.visible = 0
 
-    local selectDesignButton = shipSelectionWindow:createButton(Rect(vec2(10, shipSelectionWindow.size.y-65), vec2(130, shipSelectionWindow.size.y-20)), "Select"%_t, "onPlanSelectedPressed")
-    local cancelButton = shipSelectionWindow:createButton(Rect(vec2(150, shipSelectionWindow.size.y-65), vec2(250, shipSelectionWindow.size.y-20)), "Deselect"%_t, "onDesignCancelPressed")
+    local selectDesignButton = shipSelectionWindow:createButton(Rect(vec2(10, shipSelectionWindow.size.y - 65), vec2(130, shipSelectionWindow.size.y - 20)), "Select" % _t, "onPlanSelectedPressed")
+    local cancelButton = shipSelectionWindow:createButton(Rect(vec2(150, shipSelectionWindow.size.y - 65), vec2(250, shipSelectionWindow.size.y - 20)), "Deselect" % _t, "onDesignCancelPressed")
 
-    planSelection = shipSelectionWindow:createSavedDesignsSelection(Rect(vec2(10, 10), vec2(shipSelectionWindow.size.x/2, shipSelectionWindow.size.y - 100)), 5)
+    planSelection = shipSelectionWindow:createSavedDesignsSelection(Rect(vec2(10, 10), vec2(shipSelectionWindow.size.x / 2, shipSelectionWindow.size.y - 100)), 5)
     planSelection.dropIntoSelfEnabled = false
     planSelection.dropIntoEnabled = false
     planSelection.dragFromEnabled = false
@@ -42,7 +42,7 @@ function Shipyard.initUI()
     planSelection.onSelectedFunction = "onDesignSelected"
     planSelection.padding = 4
 
-    selectionPlandisplayer = shipSelectionWindow:createPlanDisplayer(Rect(vec2(shipSelectionWindow.size.x/2, 0), vec2(shipSelectionWindow.size.x, shipSelectionWindow.size.y - 100)))
+    selectionPlandisplayer = shipSelectionWindow:createPlanDisplayer(Rect(vec2(shipSelectionWindow.size.x / 2, 0), vec2(shipSelectionWindow.size.x, shipSelectionWindow.size.y - 100)))
     selectionPlandisplayer.showStats = false
 end
 
@@ -51,7 +51,9 @@ local advSY_oldRenderUI = Shipyard.renderUI
 function Shipyard.renderUI()
 
     local ship = Player().craft
-    if not ship then return end
+    if not ship then
+        return
+    end
 
     local buyer = Faction(ship.factionIndex)
     if buyer.isAlliance then
@@ -68,7 +70,7 @@ function Shipyard.renderUI()
     local planResourcesFee = {}
     local planResourcesTotal = {}
 
-    local foundingResources = Shipyard.getExtendedFoundingCosts(buyer)
+    local foundingResources = ShipFounding.getNextShipCosts(buyer)
 
     local timeToConstruct = math.floor(20.0 + preview.durability / 100.0)
     -- crew
@@ -90,22 +92,24 @@ function Shipyard.renderUI()
 
     local offset = 10
     if not shipSelectionWindow.visible then
-        offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Founding Costs"%_t, 0, foundingResources)
-        offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Ship Costs"%_t, planMoney, planResources)
-        offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Crew"%_t, crewMoney)
-        offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Fee"%_t, planMoney * fee, planResourcesFee)
+        offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Founding Costs" % _t, 0, foundingResources)
+        offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Ship Costs" % _t, planMoney, planResources)
+        offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Crew" % _t, crewMoney)
+        offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Fee" % _t, planMoney * fee, planResourcesFee)
 
         offset = offset + 20
-        offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Total"%_t, planMoney + planMoney * fee + crewMoney , planResourcesTotal)
-        local x, y = planDisplayer.lower.x +10, planDisplayer.lower.y + offset
-        drawText("Time to construct:"%_t.."\n"..createReadableTimeString(timeToConstruct), x, y, ColorRGB(1, 1, 1), 13, 0, 0, 2)
+        offset = offset + renderPrices(planDisplayer.lower + vec2(10, offset), "Total" % _t, planMoney + planMoney * fee + crewMoney, planResourcesTotal)
+        local x, y = planDisplayer.lower.x + 10, planDisplayer.lower.y + offset
+        drawText("Time to construct:" % _t .. "\n" .. createReadableTimeString(timeToConstruct), x, y, ColorRGB(1, 1, 1), 13, 0, 0, 2)
     end
 end
 
 local advSY_oldUpdatePlan = Shipyard.updatePlan
 function Shipyard.updatePlan()
     advSY_oldUpdatePlan()
-    if not planSelection then return end
+    if not planSelection then
+        return
+    end
     local planItem = planSelection.selected
     if planItem and planItem.plan and planItem.type == SavedDesignType.CraftDesign then
         preview = planItem.plan
@@ -121,7 +125,8 @@ function Shipyard.startClientJob(executed, duration, name, buyer)
     local job = runningJobs[#runningJobs]
     job.name = name
     job.shipOwner = buyer
-    runningJobs[#runningJobs] = job  -- TODO necessary? - Yes
+    runningJobs[#runningJobs] = job -- TODO necessary? - Yes
+   
 end
 
 function Shipyard.onDesignButtonPress()
@@ -132,19 +137,20 @@ end
 function Shipyard.onDesignSelected()
     local planItem = planSelection.selected
     if not planItem then
-        --displayChatMessage("You have no plan selected."%_t, "Shipyard"%_t, 1) << TODO gives confusing response, when clicking on folder icons
+        -- displayChatMessage("You have no plan selected."%_t, "Shipyard"%_t, 1) << TODO gives confusing response, when clicking on folder icons
         return
     end
     if planItem.type ~= SavedDesignType.CraftDesign then
-        displayChatMessage("You may only select ship blueprints."%_t, "Shipyard"%_t, 1)
+        displayChatMessage("You may only select ship blueprints." % _t, "Shipyard" % _t, 1)
         return
     end
 
     local plan = planItem.plan
-    if not plan then return end
+    if not plan then
+        return
+    end
     selectionPlandisplayer.plan = plan
 end
-
 
 function Shipyard.onDesignCancelPressed()
     shipSelectionWindow.visible = 0
@@ -160,17 +166,19 @@ end
 -- TODO decide if a build-button-onPressed function switcheroo for designs is the way to go?
 local advSY_oldOnBuildButtonPress = Shipyard.onBuildButtonPress
 function Shipyard.onBuildButtonPress()
-    --advSY_oldOnBuildButtonPress() << TODO invokeServerFunction messes the vanilla on up
+    -- advSY_oldOnBuildButtonPress() << TODO invokeServerFunction messes the vanilla on up
     -- check whether a ship with that name already exists
     local name = nameTextBox.text
 
     if name == "" then
-        displayChatMessage("You have to give your ship a name!"%_t, "Shipyard"%_t, 1)
+        displayChatMessage("You have to give your ship a name!" % _t, "Shipyard" % _t, 1)
         return
     end
 
     if Player():ownsShip(name) then
-        displayChatMessage("You already have a ship called '${x}'"%_t % {x = name}, "Shipyard"%_t, 1)
+        displayChatMessage("You already have a ship called '${x}'" % _t % {
+            x = name
+        }, "Shipyard" % _t, 1)
         return
     end
 
@@ -188,51 +196,6 @@ function Shipyard.onBuildButtonPress()
 
 end
 
-function Shipyard.getExtendedFoundingCosts(faction)
-    if faction.isAlliance then
-        faction = Alliance(faction.index)
-    elseif faction.isPlayer then
-        faction = Player(faction.index)
-    end
-
-    local numShips = faction.numShips
-    local inProduction = 0
-    for _, job in pairs(runningJobs) do
-        if job.shipOwner == faction.index then
-            inProduction = inProduction + 1
-        end
-    end
-
-    return ShipFounding.getCosts(numShips + inProduction)
-end
-
-local advSY_oldGetRequiredMoney = Shipyard.getRequiredMoney
-function Shipyard.getRequiredMoney(plan, orderingFaction)
-    local requiredMoney = plan:getMoneyValue();
-
-    local foundingResources = Shipyard.getExtendedFoundingCosts(orderingFaction)
-    requiredMoney = requiredMoney
-
-    local fee = GetFee(Faction(), orderingFaction) * 2
-    fee = requiredMoney * fee
-    requiredMoney = requiredMoney + fee
-
-    return requiredMoney, fee
-end
-
-local advSY_oldGetRequiredResources = Shipyard.getRequiredResources
-function Shipyard.getRequiredResources(plan, orderingFaction)
-
-    local resources = {plan:getResourceValue()}
-    local foundingResources = Shipyard.getExtendedFoundingCosts(orderingFaction)
-
-    for i = 1, NumMaterials() do
-        resources[i] = (resources[i] or 0) + foundingResources[i]
-    end
-
-    return resources
-end
-
 -- ######################################################################################################### --
 -- ######################################        Common        ############################################# --
 -- ######################################################################################################### --
@@ -247,9 +210,10 @@ function Shipyard.update(timeStep)
 
             if onServer() then
                 local owner = Faction(job.shipOwner)
+                local player = Player(job.player)
 
-                if owner then
-                    Shipyard.createShip(owner, job.singleBlock, job.founder, job.captain, job.styleName, job.seed, job.volume, job.scale, job.material, job.shipName, job.uuid)
+                if owner and player then
+                    Shipyard.createShip(owner, player, job.singleBlock, job.founder, job.captain, job.styleName, job.seed, job.volume, job.scale, job.material, job.shipName, job.uuid)
                 end
             end
             runningJobs[i] = nil
@@ -257,28 +221,45 @@ function Shipyard.update(timeStep)
     end
 end
 
-
 -- ######################################################################################################### --
 -- ######################################     Server Sided     ############################################# --
 -- ######################################################################################################### --
 
 function Shipyard.startServerDesignJob(founder, captain, scale, name, planToBuild)
-    if not name then print("Not a valid shipname", name) return end
+    if not name then
+        print("Not a valid shipname", name)
+        return
+    end
     local buyer, ship, player = getInteractingFaction(callingPlayer, AlliancePrivilege.SpendResources, AlliancePrivilege.FoundShips)
-    if not buyer then return end
+    if not buyer then
+        return
+    end
 
     local stationFaction = Faction()
     local station = Entity()
 
     -- shipyard may only have x jobs
     if tablelength(runningJobs) >= config.maxParallelShips then
-        player:sendChatMessage(station.title, 1, "The shipyard is already at maximum capacity."%_t)
+        player:sendChatMessage(station.title, 1, "The shipyard is already at maximum capacity." % _t)
         return
     end
 
     local settings = GameSettings()
-    if settings.maximumPlayerShips > 0 and buyer.numShips >= settings.maximumPlayerShips then
-        player:sendChatMessage("Server"%_t, 1, "Maximum ship limit per faction (%s) of this server reached!"%_t, settings.maximumPlayerShips)
+    local limit
+    if buyer.isPlayer then
+        limit = settings.maximumPlayerShips
+    elseif buyer.isAlliance then
+        if settings.MaximumAllianceShipsPerMember < 0 then
+            limit = settings.MaximumAllianceShips;
+        elseif settings.maximumAllianceShips < 0 then
+            limit = settings.MaximumAllianceShipsPerMember * #{buyer:getMembers()};
+        else
+            limit = math.min(settings.maximumAllianceShips, settings.MaximumAllianceShipsPerMember * #{buyer:getMembers()});
+        end
+    end
+
+    if limit and limit >= 0 and buyer.numShips >= limit then
+        player:sendChatMessage("", 1, "Maximum ship limit for this faction (%s) of this server reached!" % _t, limit)
         return
     end
 
@@ -294,8 +275,8 @@ function Shipyard.startServerDesignJob(founder, captain, scale, name, planToBuil
     if captain > 0 then
         if captain == 2 then
             if stationFaction:getRelations(buyer.index) < 30000 then
-                local name = "Good"%_t
-                player:sendChatMessage(station.title, ChatMessageType.Error, "You need relations of at least '%s' to this faction to include a captain with the ship."%_t, name)
+                local name = "Good" % _t
+                player:sendChatMessage(station.title, ChatMessageType.Error, "You need relations of at least '%s' to this faction to include a captain with the ship." % _t, name)
                 return
             end
         end
@@ -339,6 +320,7 @@ function Shipyard.startServerDesignJob(founder, captain, scale, name, planToBuil
     job.executed = 0
     job.duration = requiredTime
     job.shipOwner = buyer.index
+    job.player = callingPlayer
     job.scale = scale
     job.shipName = name
     job.founder = founder
@@ -361,7 +343,7 @@ function Shipyard.startServerDesignJob(founder, captain, scale, name, planToBuil
 
     table.insert(runningJobs, job)
 
-    player:sendChatMessage(station.title, 0, "Thank you for your purchase. Your ship will be ready in about %s."%_t, createReadableTimeString(requiredTime))
+    player:sendChatMessage(station.title, 0, "Thank you for your purchase. Your ship will be ready in about %s." % _t, createReadableTimeString(requiredTime))
 
     -- tell all clients in the sector that production begins
     broadcastInvokeClientFunction("startClientJob", 0, requiredTime, name, buyer.index)
@@ -369,31 +351,53 @@ end
 callable(Shipyard, "startServerDesignJob")
 
 local advSY_oldCreateShip = Shipyard.createShip
-function Shipyard.createShip(buyer, singleBlock, founder, captain, styleName, seed, volume, scale, material, name, uuid)
-    if not uuid then advSY_oldCreateShip(buyer, singleBlock, founder, captain, styleName, seed, volume, scale, material, name) return end
-
-    local ownedShips = 0
-    if buyer.isAlliance then
-        buyer = Alliance(buyer.index)
-    elseif buyer.isPlayer then
-        buyer = Player(buyer.index)
-    else
-        printlog("Well your Faction got a little messy, didn't it?", buyer.index)
+function Shipyard.createShip(buyer, player, singleBlock, founder, captain, styleName, seed, volume, scale, material, name, uuid)
+    if not uuid then
+        advSY_oldCreateShip(buyer, player, singleBlock, founder, captain, styleName, seed, volume, scale, material, name)
         return
     end
-    ownedShips = buyer.numShips
 
     local settings = GameSettings()
-    if settings.maximumPlayerShips > 0 and ownedShips >= settings.maximumPlayerShips then
-        buyer:sendChatMessage("Server"%_t, 1, "Maximum ship limit per faction (%s) of this server reached!"%_t, settings.maximumPlayerShips)
-        return
+    local limit
+    if buyer.isPlayer then
+        limit = settings.maximumPlayerShips
+    elseif buyer.isAlliance then
+        if settings.MaximumAllianceShipsPerMember < 0 then
+            limit = settings.MaximumAllianceShips;
+        elseif settings.maximumAllianceShips < 0 then
+            limit = settings.MaximumAllianceShipsPerMember * #{buyer:getMembers()};
+        else
+            limit = math.min(settings.maximumAllianceShips, settings.MaximumAllianceShipsPerMember * #{buyer:getMembers()});
+        end
     end
 
-    local station = Entity()
     local stationFaction = Faction()
 
     local ship = Entity(Uuid(uuid))
-    if not ship then print("skipping invalid ship:", name, "buyer:", buyer.name, "Sector:", Sector():getCoordinates(), "uuid:", uuid) return end
+    if not ship then
+        print("skipping invalid ship:", name, "buyer:", buyer.name, "Sector:", Sector():getCoordinates(), "uuid:", uuid)
+        return
+    end
+
+    if limit and limit >= 0 and buyer.numShips >= limit then
+        player:sendChatMessage("", 1, "Maximum ship limit for this faction (%s) of this server reached!" % _t, limit)
+
+        -- ship limit reached, so purchase will be reverted
+
+        -- get the money required for the plan
+        local requiredMoney, fee = Shipyard.getRequiredMoney(plan, buyer)
+        local requiredResources = Shipyard.getRequiredResources(plan, buyer)
+
+        if captain > 0 then
+            requiredMoney = requiredMoney + Shipyard.getCrewMoney(plan, captain == 2)
+        end
+
+        -- revert the direct payment of the player, but not the fee payment or relations change
+        buyer:receive("Received a refund of %1% Credits and resources from the shipyard." % _T, requiredMoney - fee, unpack(requiredResources))
+
+        Sector():deleteEntity(ship)
+        return
+    end
 
     -- add base scripts
     AddDefaultShipScripts(ship)
