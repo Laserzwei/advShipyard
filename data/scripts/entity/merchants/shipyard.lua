@@ -212,8 +212,15 @@ function Shipyard.update(timeStep)
                 local owner = Faction(job.shipOwner)
                 local player = Player(job.player)
 
-                if owner and player then
-                    Shipyard.createShip(owner, player, job.singleBlock, job.founder, job.captain, job.styleName, job.seed, job.volume, job.scale, job.material, job.shipName, job.uuid)
+                local gameversion = GameVersion()
+                if (gameversion.major >= 1 and gameversion.minor >= 2) then
+                    if owner and player then
+                        Shipyard.createShip(owner, player, job.singleBlock, job.founder, job.captain, job.styleName, job.seed, job.volume, job.scale, job.material, job.shipName, job.uuid)
+                    end
+                else
+                    if owner then
+                        Shipyard.createShip(owner, player, job.singleBlock, job.founder, job.captain, job.styleName, job.seed, job.volume, job.scale, job.material, job.shipName, job.uuid)
+                    end
                 end
             end
             runningJobs[i] = nil
@@ -353,7 +360,12 @@ callable(Shipyard, "startServerDesignJob")
 local advSY_oldCreateShip = Shipyard.createShip
 function Shipyard.createShip(buyer, player, singleBlock, founder, captain, styleName, seed, volume, scale, material, name, uuid)
     if not uuid then
-        advSY_oldCreateShip(buyer, player, singleBlock, founder, captain, styleName, seed, volume, scale, material, name)
+        local gameversion = GameVersion()
+        if (gameversion.major >= 1 and gameversion.minor >= 2) then
+            advSY_oldCreateShip(buyer, player, singleBlock, founder, captain, styleName, seed, volume, scale, material, name)
+        else
+            advSY_oldCreateShip(buyer, singleBlock, founder, captain, styleName, seed, volume, scale, material, name)
+        end
         return
     end
 
@@ -380,7 +392,10 @@ function Shipyard.createShip(buyer, player, singleBlock, founder, captain, style
     end
 
     if limit and limit >= 0 and buyer.numShips >= limit then
-        player:sendChatMessage("", 1, "Maximum ship limit for this faction (%s) of this server reached!" % _t, limit)
+        local gameversion = GameVersion()
+        if (gameversion.major >= 1 and gameversion.minor >= 2) then
+            player:sendChatMessage("", 1, "Maximum ship limit for this faction (%s) of this server reached!" % _t, limit)
+        end
 
         -- ship limit reached, so purchase will be reverted
 
