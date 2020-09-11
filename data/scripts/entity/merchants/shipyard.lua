@@ -256,12 +256,12 @@ function Shipyard.startServerDesignJob(founder, captain, scale, name, planToBuil
     if buyer.isPlayer then
         limit = settings.maximumPlayerShips
     elseif buyer.isAlliance then
-        if settings.MaximumAllianceShipsPerMember < 0 then
+        if settings.maximumAllianceShipsPerMember < 0 then
             limit = settings.MaximumAllianceShips;
         elseif settings.maximumAllianceShips < 0 then
-            limit = settings.MaximumAllianceShipsPerMember * #{buyer:getMembers()};
+            limit = settings.maximumAllianceShipsPerMember * #{buyer:getMembers()};
         else
-            limit = math.min(settings.maximumAllianceShips, settings.MaximumAllianceShipsPerMember * #{buyer:getMembers()});
+            limit = math.min(settings.maximumAllianceShips, settings.maximumAllianceShipsPerMember * #{buyer:getMembers()});
         end
     end
 
@@ -374,12 +374,12 @@ function Shipyard.createShip(buyer, player, singleBlock, founder, captain, style
     if buyer.isPlayer then
         limit = settings.maximumPlayerShips
     elseif buyer.isAlliance then
-        if settings.MaximumAllianceShipsPerMember < 0 then
+        if settings.maximumAllianceShipsPerMember < 0 then
             limit = settings.MaximumAllianceShips;
         elseif settings.maximumAllianceShips < 0 then
-            limit = settings.MaximumAllianceShipsPerMember * #{buyer:getMembers()};
+            limit = settings.maximumAllianceShipsPerMember * #{buyer:getMembers()};
         else
-            limit = math.min(settings.maximumAllianceShips, settings.MaximumAllianceShipsPerMember * #{buyer:getMembers()});
+            limit = math.min(settings.maximumAllianceShips, settings.maximumAllianceShipsPerMember * #{buyer:getMembers()});
         end
     end
 
