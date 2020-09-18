@@ -209,7 +209,7 @@ function Shipyard.update(timeStep)
         if job.executed >= job.duration then
 
             if onServer() then
-                local owner = Faction(job.shipOwner)
+                local owner = Galaxy():findFaction(job.shipOwner)
                 local player = Player(job.player)
 
                 local gameversion = GameVersion()
@@ -253,16 +253,8 @@ function Shipyard.startServerDesignJob(founder, captain, scale, name, planToBuil
 
     local settings = GameSettings()
     local limit
-    if buyer.isPlayer then
-        limit = settings.maximumPlayerShips
-    elseif buyer.isAlliance then
-        if settings.maximumAllianceShipsPerMember < 0 then
-            limit = settings.MaximumAllianceShips;
-        elseif settings.maximumAllianceShips < 0 then
-            limit = settings.maximumAllianceShipsPerMember * #{buyer:getMembers()};
-        else
-            limit = math.min(settings.maximumAllianceShips, settings.maximumAllianceShipsPerMember * #{buyer:getMembers()});
-        end
+    if buyer.isPlayer or buyer.isAlliance then
+        limit = buyer.maxNumShips
     end
 
     if limit and limit >= 0 and buyer.numShips >= limit then
