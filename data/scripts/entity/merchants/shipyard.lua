@@ -310,7 +310,7 @@ function Shipyard.startServerDesignJob(founder, captain, scale, name, planToBuil
         requiredTime = requiredTime + 300
     end
 
-    if buyer.infiniteResources then
+    if Scenario().isCreative then
         requiredTime = 1.0
     end
 
