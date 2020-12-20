@@ -251,7 +251,6 @@ function Shipyard.startServerDesignJob(founder, captain, scale, name, planToBuil
         return
     end
 
-    local settings = GameSettings()
     local limit
     if buyer.isPlayer or buyer.isAlliance then
         limit = buyer.maxNumShips
@@ -361,18 +360,9 @@ function Shipyard.createShip(buyer, player, singleBlock, founder, captain, style
         return
     end
 
-    local settings = GameSettings()
     local limit
-    if buyer.isPlayer then
-        limit = settings.maximumPlayerShips
-    elseif buyer.isAlliance then
-        if settings.maximumAllianceShipsPerMember < 0 then
-            limit = settings.MaximumAllianceShips;
-        elseif settings.maximumAllianceShips < 0 then
-            limit = settings.maximumAllianceShipsPerMember * #{buyer:getMembers()};
-        else
-            limit = math.min(settings.maximumAllianceShips, settings.maximumAllianceShipsPerMember * #{buyer:getMembers()});
-        end
+    if buyer.isPlayer or buyer.isAlliance then
+        limit = buyer.maxNumShips
     end
 
     local stationFaction = Faction()
