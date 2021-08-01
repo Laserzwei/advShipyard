@@ -32,15 +32,14 @@ end
 callable(tFT, "sendVars")
 
 function tFT.setVars(pConstructionTime, pTimeUntilFinished, pName, pBuyer, pWithCrew)
-	if not pConstructionTime or not pTimeUntilFinished or not pName or not pBuyer or not pWithCrew then
+	if pConstructionTime == nil or pTimeUntilFinished == nil or pName == nil or pBuyer == nil or pWithCrew == nil then
 		print("Nothing set", pConstructionTime, pTimeUntilFinished, pName, pBuyer, pWithCrew)
-	else
-		constructionTime = pConstructionTime
-		timeUntilFinished = pTimeUntilFinished
-		name = pName
-		buyer = pBuyer
-		withCrew = pWithCrew
 	end
+	constructionTime = pConstructionTime
+	timeUntilFinished = pTimeUntilFinished
+	name = pName
+	buyer = pBuyer
+	withCrew = pWithCrew
 end
 
 function onRestoredFromDisk(time)

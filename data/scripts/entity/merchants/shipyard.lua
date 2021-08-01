@@ -80,7 +80,7 @@ function Shipyard.renderUI()
     local crewMoney = 0
     
     if gameversion.major >= 2 then
-        if withCrew then
+        if crewCombo.selectedIndex > 0 then
             crewMoney = Shipyard.getCrewMoney(preview)
             timeToConstruct = timeToConstruct + 10
         end
@@ -198,6 +198,7 @@ function Shipyard.onBuildButtonPress()
 
     local planItem = selectedPlanItem
     if gameversion.major >= 2 then
+        local withCrew = crewCombo.selectedIndex > 0
         if planItem and planItem.plan and planItem.type == SavedDesignType.CraftDesign then
             invokeServerFunction("startServerDesignJob", founder, withCrew, scale, name, planItem.plan)
         else
@@ -207,7 +208,6 @@ function Shipyard.onBuildButtonPress()
         if planItem and planItem.plan and planItem.type == SavedDesignType.CraftDesign then
             invokeServerFunction("startServerDesignJob", founder, captainCombo.selectedIndex, scale, name, planItem.plan)
         else
-            print("cap", captainCombo.selectedIndex)
             invokeServerFunction("startServerJob", singleBlock, founder, captainCombo.selectedIndex, styleName, seed, volume, scale, material, name)
         end
     end
@@ -387,7 +387,6 @@ callable(Shipyard, "startServerDesignJob")
 local advSY_oldCreateShip = Shipyard.createShip
 function Shipyard.createShip(buyer, player, singleBlock, founder, withCrew, styleName, seed, volume, scale, material, name, uuid)
     if not uuid then
-        print("with crew", withCrew)
         advSY_oldCreateShip(buyer, player, singleBlock, founder, withCrew, styleName, seed, volume, scale, material, name)
         return
     end
