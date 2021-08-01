@@ -1,5 +1,7 @@
 local config = include("data/config/advshipyardconfig")
 
+local gameversion = GameVersion()
+
 -- Menu items
 local shipSelectionWindow
 
@@ -8,6 +10,7 @@ local selectShipDesignButton
 
 -- ship selectionwindow
 local planSelection
+local selectedPlanItem
 local selectionPlandisplayer
 
 local advSY_oldInitUI = Shipyard.initUI
@@ -75,9 +78,17 @@ function Shipyard.renderUI()
     local timeToConstruct = math.floor(20.0 + preview.durability / 100.0)
     -- crew
     local crewMoney = 0
-    if captainCombo.selectedIndex > 0 then
-        crewMoney = Shipyard.getCrewMoney(preview, captainCombo.selectedIndex == 2)
-        timeToConstruct = timeToConstruct + 300
+    
+    if gameversion.major >= 2 then
+        if withCrew then
+            crewMoney = Shipyard.getCrewMoney(preview)
+            timeToConstruct = timeToConstruct + 10
+        end
+    else
+        if captainCombo.selectedIndex > 0 then
+            crewMoney = Shipyard.getCrewMoney(preview, captainCombo.selectedIndex == 2)
+            timeToConstruct = timeToConstruct + 300
+        end
     end
 
     -- plan resources
@@ -104,19 +115,16 @@ function Shipyard.renderUI()
     end
 end
 
+
 local advSY_oldUpdatePlan = Shipyard.updatePlan
 function Shipyard.updatePlan()
     advSY_oldUpdatePlan()
-    if not planSelection then
-        return
-    end
-    local planItem = planSelection.selected
-    if planItem and planItem.plan and planItem.type == SavedDesignType.CraftDesign then
-        preview = planItem.plan
-    end
 
-    -- set to display
-    planDisplayer.plan = preview
+    if selectedPlanItem and selectedPlanItem.type == SavedDesignType.CraftDesign then
+        preview = selectedPlanItem.plan
+        preview:scale(vec3(scale, scale, scale))
+        planDisplayer.plan = preview
+    end
 end
 
 local advSY_oldStartClientJob = Shipyard.startClientJob
@@ -125,8 +133,7 @@ function Shipyard.startClientJob(executed, duration, name, buyer)
     local job = runningJobs[#runningJobs]
     job.name = name
     job.shipOwner = buyer
-    runningJobs[#runningJobs] = job -- TODO necessary? - Yes
-   
+    runningJobs[#runningJobs] = job
 end
 
 function Shipyard.onDesignButtonPress()
@@ -149,12 +156,15 @@ function Shipyard.onDesignSelected()
     if not plan then
         return
     end
-    selectionPlandisplayer.plan = plan
+    selectedPlanItem = planItem
+    
+    selectionPlandisplayer.plan = selectedPlanItem.plan
 end
 
 function Shipyard.onDesignCancelPressed()
     shipSelectionWindow.visible = 0
     planSelection:unselect()
+    selectedPlanItem = nil
     Shipyard.updatePlan()
 end
 
@@ -184,16 +194,23 @@ function Shipyard.onBuildButtonPress()
 
     local singleBlock = singleBlockCheckBox.checked
     local founder = stationFounderCheckBox.checked
-    local captain = captainCombo.selectedIndex
     local seed = seedTextBox.text
 
-    local planItem = planSelection.selected
-    if planItem and planItem.plan and planItem.type == SavedDesignType.CraftDesign then
-        invokeServerFunction("startServerDesignJob", founder, captain, scale, name, planItem.plan)
+    local planItem = selectedPlanItem
+    if gameversion.major >= 2 then
+        if planItem and planItem.plan and planItem.type == SavedDesignType.CraftDesign then
+            invokeServerFunction("startServerDesignJob", founder, withCrew, scale, name, planItem.plan)
+        else
+            invokeServerFunction("startServerJob", singleBlock, founder, withCrew, styleName, seed, volume, scale, material, name)
+        end
     else
-        invokeServerFunction("startServerJob", singleBlock, founder, captain, styleName, seed, volume, scale, material, name)
+        if planItem and planItem.plan and planItem.type == SavedDesignType.CraftDesign then
+            invokeServerFunction("startServerDesignJob", founder, captainCombo.selectedIndex, scale, name, planItem.plan)
+        else
+            print("cap", captainCombo.selectedIndex)
+            invokeServerFunction("startServerJob", singleBlock, founder, captainCombo.selectedIndex, styleName, seed, volume, scale, material, name)
+        end
     end
-
 end
 
 -- ######################################################################################################### --
@@ -212,16 +229,14 @@ function Shipyard.update(timeStep)
                 local owner = Galaxy():findFaction(job.shipOwner)
                 local player = Player(job.player)
 
-                local gameversion = GameVersion()
-                if (gameversion.major >= 1 and gameversion.minor >= 2) then
-                    if owner and player then
-                        Shipyard.createShip(owner, player, job.singleBlock, job.founder, job.captain, job.styleName, job.seed, job.volume, job.scale, job.material, job.shipName, job.uuid)
-                    end
-                else
-                    if owner then
+                if owner and player then
+                    if gameversion.major >= 2 then
+                        Shipyard.createShip(owner, player, job.singleBlock, job.founder, job.withCrew, job.styleName, job.seed, job.volume, job.scale, job.material, job.shipName, job.uuid)
+                    else 
                         Shipyard.createShip(owner, player, job.singleBlock, job.founder, job.captain, job.styleName, job.seed, job.volume, job.scale, job.material, job.shipName, job.uuid)
                     end
                 end
+                
             end
             runningJobs[i] = nil
         end
@@ -232,7 +247,7 @@ end
 -- ######################################     Server Sided     ############################################# --
 -- ######################################################################################################### --
 
-function Shipyard.startServerDesignJob(founder, captain, scale, name, planToBuild)
+function Shipyard.startServerDesignJob(founder, withCrew, scale, name, planToBuild)
     if not name then
         print("Not a valid shipname", name)
         return
@@ -270,16 +285,13 @@ function Shipyard.startServerDesignJob(founder, captain, scale, name, planToBuil
     local requiredMoney, fee = Shipyard.getRequiredMoney(plan, buyer)
     local requiredResources = Shipyard.getRequiredResources(plan, buyer)
 
-    if captain > 0 then
-        if captain == 2 then
-            if stationFaction:getRelations(buyer.index) < 30000 then
-                local name = "Good" % _t
-                player:sendChatMessage(station.title, ChatMessageType.Error, "You need relations of at least '%s' to this faction to include a captain with the ship." % _t, name)
-                return
-            end
+    if withCrew then
+        if gameversion.major < 2 and captain == 2 and stationFaction:getRelations(buyer.index) < 30000 then
+            local name = "Good" % _t
+            player:sendChatMessage(station.title, ChatMessageType.Error, "You need relations of at least '%s' to this faction to include a captain with the ship." % _t, name)
+            return
         end
-
-        requiredMoney = requiredMoney + Shipyard.getCrewMoney(plan, captain == 2)
+        requiredMoney = requiredMoney + Shipyard.getCrewMoney(plan)
     end
 
     -- check if the player has enough money & resources
@@ -305,8 +317,14 @@ function Shipyard.startServerDesignJob(founder, captain, scale, name, planToBuil
     -- start the job
     local requiredTime = math.floor(20.0 + plan.durability / 100.0)
 
-    if captain > 0 then
-        requiredTime = requiredTime + 300
+    if gameversion.major >= 2 then
+        if withCrew then
+            requiredTime = requiredTime + 10
+        end
+    else 
+        if withCrew > 0 then
+            requiredTime = requiredTime + 300
+        end
     end
 
     if Scenario().isCreative then
@@ -322,7 +340,10 @@ function Shipyard.startServerDesignJob(founder, captain, scale, name, planToBuil
     job.scale = scale
     job.shipName = name
     job.founder = founder
-    job.captain = captain
+    job.withCrew = withCrew
+    if gameversion.major < 2 then
+        job.captain = withCrew
+    end
     -- job.plan = seriLib.serializeBlockPlan(planToBuild)  << If only someone had made a full serialzation lib. Hint @1694550170
 
     local position = Entity().orientation
@@ -330,13 +351,28 @@ function Shipyard.startServerDesignJob(founder, captain, scale, name, planToBuil
     position.translation = sphere.center + random():getDirection() * (sphere.radius + plan.radius + 50)
     local ship = Sector():createShip(Faction(Entity().factionIndex), job.shipName, plan, position)
     ship.invincible = true
-    local crew = ship.minCrew
-    crew:add(1, CrewMan(CrewProfessionType.Captain, true, 1))
+
+    local crew = nil
+    if gameversion.major >= 2 then
+        crew = ship.idealCrew
+    else 
+        crew = ship.minCrew
+        crew:add(1, CrewMan(CrewProfessionType.Captain, true, 1))
+    end
+    
     ship.crew = crew
     ship.factionIndex = -1
 
+    -- add base scripts
+    AddDefaultShipScripts(ship)
+    SetBoardingDefenseLevel(ship)
+
+    if founder then
+        ship:addScript("data/scripts/entity/stationfounder.lua", stationFaction)
+    end
+
     ship:addScriptOnce("data/scripts/entity/timedFactionTransferer.lua")
-    ship:invokeFunction("data/scripts/entity/timedFactionTransferer.lua", "setVars", requiredTime, requiredTime, name, buyer.index, captain)
+    ship:invokeFunction("data/scripts/entity/timedFactionTransferer.lua", "setVars", requiredTime, requiredTime, name, buyer.index, withCrew)
     job.uuid = ship.index.string
 
     table.insert(runningJobs, job)
@@ -349,69 +385,10 @@ end
 callable(Shipyard, "startServerDesignJob")
 
 local advSY_oldCreateShip = Shipyard.createShip
-function Shipyard.createShip(buyer, player, singleBlock, founder, captain, styleName, seed, volume, scale, material, name, uuid)
+function Shipyard.createShip(buyer, player, singleBlock, founder, withCrew, styleName, seed, volume, scale, material, name, uuid)
     if not uuid then
-        local gameversion = GameVersion()
-        if (gameversion.major >= 1 and gameversion.minor >= 2) then
-            advSY_oldCreateShip(buyer, player, singleBlock, founder, captain, styleName, seed, volume, scale, material, name)
-        else
-            advSY_oldCreateShip(buyer, singleBlock, founder, captain, styleName, seed, volume, scale, material, name)
-        end
+        print("with crew", withCrew)
+        advSY_oldCreateShip(buyer, player, singleBlock, founder, withCrew, styleName, seed, volume, scale, material, name)
         return
-    end
-
-    local limit
-    if buyer.isPlayer or buyer.isAlliance then
-        limit = buyer.maxNumShips
-    end
-
-    local stationFaction = Faction()
-
-    local ship = Entity(Uuid(uuid))
-    if not ship then
-        print("skipping invalid ship:", name, "buyer:", buyer.name, "Sector:", Sector():getCoordinates(), "uuid:", uuid)
-        return
-    end
-
-    if limit and limit >= 0 and buyer.numShips >= limit then
-        local gameversion = GameVersion()
-        if (gameversion.major >= 1 and gameversion.minor >= 2) then
-            player:sendChatMessage("", 1, "Maximum ship limit for this faction (%s) of this server reached!" % _t, limit)
-        end
-
-        -- ship limit reached, so purchase will be reverted
-
-        -- get the money required for the plan
-        local requiredMoney, fee = Shipyard.getRequiredMoney(plan, buyer)
-        local requiredResources = Shipyard.getRequiredResources(plan, buyer)
-
-        if captain > 0 then
-            requiredMoney = requiredMoney + Shipyard.getCrewMoney(plan, captain == 2)
-        end
-
-        -- revert the direct payment of the player, but not the fee payment or relations change
-        buyer:receive("Received a refund of %1% Credits and resources from the shipyard." % _T, requiredMoney - fee, unpack(requiredResources))
-
-        Sector():deleteEntity(ship)
-        return
-    end
-
-    -- add base scripts
-    AddDefaultShipScripts(ship)
-    SetBoardingDefenseLevel(ship)
-
-    if founder then
-        ship:addScript("data/scripts/entity/stationfounder.lua", stationFaction)
-    end
-
-    if captain > 0 then
-        -- add base crew
-        local crew = ship.minCrew
-
-        if captain == 2 then
-            crew:add(1, CrewMan(CrewProfessionType.Captain, true, 1))
-        end
-
-        ship.crew = crew
     end
 end
