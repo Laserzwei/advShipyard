@@ -247,7 +247,7 @@ end
 -- ######################################     Server Sided     ############################################# --
 -- ######################################################################################################### --
 
-function Shipyard.startServerDesignJob(founder, withCrew, scale, name, planToBuild)
+function Shipyard.startServerDesignJob(founder, withCrew, scale, name, plan)
     if not name then
         print("Not a valid shipname", name)
         return
@@ -270,15 +270,24 @@ function Shipyard.startServerDesignJob(founder, withCrew, scale, name, planToBui
     if buyer.isPlayer or buyer.isAlliance then
         limit = buyer.maxNumShips
     end
-
-    if limit and limit >= 0 and buyer.numShips >= limit then
+    local aboveShiplimit =  limit and limit >= 0 and buyer.numShips >= limit
+    if aboveShiplimit then
         player:sendChatMessage("", 1, "Maximum ship limit for this faction (%s) of this server reached!" % _t, limit)
         return
     end
 
-    -- check if the player can afford the ship
-    -- first create the plan
-    local plan = planToBuild
+    local settings = GameSettings()
+    local exceedsVolume = settings.maximumVolumePerShip > 0 and settings.maximumVolumePerShip < plan.volume;
+    if exceedsVolume then
+        player:sendChatMessage("", 1, "Ship volume exceeds server limit (%s/%s)" % _t, math.ceil(plan.volume), settings.maximumVolumePerShip)
+        return
+    end
+
+    local exceedsVolume = settings.maximumBlocksPerCraft > 0 and settings.maximumBlocksPerCraft < plan.numBlocks;
+    if exceedsVolume then
+        player:sendChatMessage("", 1, "Ship block count exceeds server limit (%s/%s)" % _t, math.ceil(plan.numBlocks), settings.maximumBlocksPerCraft)
+        return
+    end
 
     plan:scale(vec3(scale, scale, scale))
 
