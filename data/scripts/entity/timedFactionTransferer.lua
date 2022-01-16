@@ -1,11 +1,6 @@
 package.path = package.path .. ";data/scripts/lib/?.lua"
 include("callable")
-local gameversion = GameVersion()
-if gameversion.major >= 2 then
-	include ("reconstructionutility")
-else
-	include ("reconstructiontoken")
-end
+include ("reconstructionutility")
 
 -- Don't remove or alter the following comment, it tells the game the namespace this script lives in. If you remove it, the script will break.
 -- namespace tFT
@@ -61,18 +56,8 @@ function tFT.update(timestep)
 
 			-- add base crew
 			local crew = Crew()
-			if gameversion.major >= 2 then
-				if withCrew then
-					crew = ship.idealCrew
-				end
-			else
-				if withCrew > 0 then
-					crew = ship.minCrew
-
-					if withCrew == 2 then
-						crew:add(1, CrewMan(CrewProfessionType.Captain, true, 1))
-					end
-				end
+			if withCrew then
+				crew = ship.idealCrew
 			end
 			ship.crew = crew
 			buyerFaction = Faction(buyer)
@@ -84,16 +69,8 @@ function tFT.update(timestep)
 			buyerFaction:sendCallback("onShipCreationFinished", senderInfo, ship.id)
 
 			if GameSettings().difficulty <= Difficulty.Veteran and GameSettings().reconstructionAllowed then
-				if gameversion.major >= 2 then
-					local kit = createReconstructionKit(ship)
-					buyerFaction:getInventory():addOrDrop(kit, true)
-				else
-					local token = createReconstructionToken(ship)
-                    if GameSettings().difficulty <= Difficulty.Easy then
-                        buyerFaction:getInventory():addOrDrop(token, true)
-                    end
-                    buyerFaction:getInventory():addOrDrop(token, true)
-				end
+				local kit = createReconstructionKit(ship)
+				buyerFaction:getInventory():addOrDrop(kit, true)
 			end
 
 			terminate()

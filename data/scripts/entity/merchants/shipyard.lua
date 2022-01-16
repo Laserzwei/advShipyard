@@ -1,7 +1,5 @@
 local config = include("data/config/advshipyardconfig")
 
-local gameversion = GameVersion()
-
 -- Menu items
 local shipSelectionWindow
 
@@ -79,16 +77,9 @@ function Shipyard.renderUI()
     -- crew
     local crewMoney = 0
     
-    if gameversion.major >= 2 then
-        if crewCombo.selectedIndex > 0 then
-            crewMoney = Shipyard.getCrewMoney(preview)
-            timeToConstruct = timeToConstruct + 10
-        end
-    else
-        if captainCombo.selectedIndex > 0 then
-            crewMoney = Shipyard.getCrewMoney(preview, captainCombo.selectedIndex == 2)
-            timeToConstruct = timeToConstruct + 300
-        end
+    if crewCombo.selectedIndex > 0 then
+        crewMoney = Shipyard.getCrewMoney(preview)
+        timeToConstruct = timeToConstruct + 10
     end
 
     -- plan resources
@@ -197,19 +188,11 @@ function Shipyard.onBuildButtonPress()
     local seed = seedTextBox.text
 
     local planItem = selectedPlanItem
-    if gameversion.major >= 2 then
-        local withCrew = crewCombo.selectedIndex > 0
-        if planItem and planItem.plan and planItem.type == SavedDesignType.CraftDesign then
-            invokeServerFunction("startServerDesignJob", founder, withCrew, scale, name, planItem.plan)
-        else
-            invokeServerFunction("startServerJob", singleBlock, founder, withCrew, styleName, seed, volume, scale, material, name)
-        end
+    local withCrew = crewCombo.selectedIndex > 0
+    if planItem and planItem.plan and planItem.type == SavedDesignType.CraftDesign then
+        invokeServerFunction("startServerDesignJob", founder, withCrew, scale, name, planItem.plan)
     else
-        if planItem and planItem.plan and planItem.type == SavedDesignType.CraftDesign then
-            invokeServerFunction("startServerDesignJob", founder, captainCombo.selectedIndex, scale, name, planItem.plan)
-        else
-            invokeServerFunction("startServerJob", singleBlock, founder, captainCombo.selectedIndex, styleName, seed, volume, scale, material, name)
-        end
+        invokeServerFunction("startServerJob", singleBlock, founder, withCrew, styleName, seed, volume, scale, material, name)
     end
 end
 
@@ -230,11 +213,7 @@ function Shipyard.update(timeStep)
                 local player = Player(job.player)
 
                 if owner and player then
-                    if gameversion.major >= 2 then
-                        Shipyard.createShip(owner, player, job.singleBlock, job.founder, job.withCrew, job.styleName, job.seed, job.volume, job.scale, job.material, job.shipName, job.uuid)
-                    else 
-                        Shipyard.createShip(owner, player, job.singleBlock, job.founder, job.captain, job.styleName, job.seed, job.volume, job.scale, job.material, job.shipName, job.uuid)
-                    end
+                    Shipyard.createShip(owner, player, job.singleBlock, job.founder, job.withCrew, job.styleName, job.seed, job.volume, job.scale, job.material, job.shipName, job.uuid)
                 end
                 
             end
@@ -295,7 +274,7 @@ function Shipyard.startServerDesignJob(founder, withCrew, scale, name, plan)
     local requiredResources = Shipyard.getRequiredResources(plan, buyer)
 
     if withCrew then
-        if gameversion.major < 2 and captain == 2 and stationFaction:getRelations(buyer.index) < 30000 then
+        if captain == 2 and stationFaction:getRelations(buyer.index) < 30000 then
             local name = "Good" % _t
             player:sendChatMessage(station.title, ChatMessageType.Error, "You need relations of at least '%s' to this faction to include a captain with the ship." % _t, name)
             return
@@ -326,14 +305,8 @@ function Shipyard.startServerDesignJob(founder, withCrew, scale, name, plan)
     -- start the job
     local requiredTime = math.floor(20.0 + plan.durability / 100.0)
 
-    if gameversion.major >= 2 then
-        if withCrew then
-            requiredTime = requiredTime + 10
-        end
-    else 
-        if withCrew > 0 then
-            requiredTime = requiredTime + 300
-        end
+    if withCrew then
+        requiredTime = requiredTime + 10
     end
 
     if Scenario().isCreative then
@@ -350,9 +323,7 @@ function Shipyard.startServerDesignJob(founder, withCrew, scale, name, plan)
     job.shipName = name
     job.founder = founder
     job.withCrew = withCrew
-    if gameversion.major < 2 then
-        job.captain = withCrew
-    end
+    job.captain = withCrew
     -- job.plan = seriLib.serializeBlockPlan(planToBuild)  << If only someone had made a full serialzation lib. Hint @1694550170
 
     local position = Entity().orientation
@@ -362,12 +333,7 @@ function Shipyard.startServerDesignJob(founder, withCrew, scale, name, plan)
     ship.invincible = true
 
     local crew = nil
-    if gameversion.major >= 2 then
-        crew = ship.idealCrew
-    else 
-        crew = ship.minCrew
-        crew:add(1, CrewMan(CrewProfessionType.Captain, true, 1))
-    end
+    crew = ship.idealCrew
     
     ship.crew = crew
     ship.factionIndex = -1
@@ -379,6 +345,8 @@ function Shipyard.startServerDesignJob(founder, withCrew, scale, name, plan)
     if founder then
         ship:addScript("data/scripts/entity/stationfounder.lua", stationFaction)
     end
+
+    ship:removeScript("entity/claimalliance.lua")
 
     ship:addScriptOnce("data/scripts/entity/timedFactionTransferer.lua")
     ship:invokeFunction("data/scripts/entity/timedFactionTransferer.lua", "setVars", requiredTime, requiredTime, name, buyer.index, withCrew)
