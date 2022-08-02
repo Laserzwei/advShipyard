@@ -300,7 +300,12 @@ function Shipyard.startServerDesignJob(founder, withCrew, scale, name, plan)
         relationsChange = relationsChange + v / 4
     end
 
-    changeRelations(buyer, stationFaction, relationsChange, RelationChangeType.ServiceUsage)
+    local gameversion = GameVersion()
+    if gameversion.major >= 2 and gameversion.minor >= 2 then
+        changeRelations(buyer, stationFaction, relationsChange, RelationChangeType.ServiceUsage, nil, nil, station)
+    else 
+        changeRelations(buyer, stationFaction, relationsChange, RelationChangeType.ServiceUsage)
+    end
 
     -- start the job
     local requiredTime = math.floor(20.0 + plan.durability / 100.0)
